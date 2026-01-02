@@ -22,9 +22,11 @@ import {
 } from '@/components/ui/select';
 import { useAppStore } from '@/store/appStore';
 import { Client, TransactionType } from '@/types';
-import { Plus, Pencil, Trash2, FileText } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { ClientFicheDialog } from '@/components/clients/ClientFicheDialog';
+import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
+import { AllClientsExtraitPDF } from '@/components/pdf/AllClientsExtraitPDF';
 
 const clientTypeLabels: Record<TransactionType, string> = {
   facon: 'Façon (Service)',
@@ -33,7 +35,7 @@ const clientTypeLabels: Record<TransactionType, string> = {
 };
 
 const Clients = () => {
-  const { clients, clientOperations, bonsReception, addClient, updateClient, deleteClient } = useAppStore();
+  const { clients, clientOperations, bonsReception, paymentReceipts, settings, addClient, updateClient, deleteClient } = useAppStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [ficheClient, setFicheClient] = useState<Client | null>(null);
@@ -96,13 +98,26 @@ const Clients = () => {
   const getClientTotals = (clientId: string) => {
     const ops = clientOperations.filter(op => op.clientId === clientId);
     const brs = bonsReception.filter(br => br.clientId === clientId);
+    const receipts = paymentReceipts.filter(r => r.clientId === clientId);
     
     const capitalDT = ops.filter(op => op.type === 'capital_fdr').reduce((sum, op) => sum + (op.montantDT || 0), 0);
     const avanceDT = ops.filter(op => op.type === 'avance').reduce((sum, op) => sum + (op.montantDT || 0), 0);
     const brKg = brs.reduce((sum, br) => sum + br.poidsNet, 0);
+    const totalPayments = receipts.reduce((sum, r) => sum + r.totalMontant, 0);
     
-    return { capitalDT, avanceDT, brKg };
+    return { capitalDT, avanceDT, brKg, totalPayments };
   };
+
+  // Prepare all clients data for PDF
+  const allClientsData = clients.map(client => {
+    const totals = getClientTotals(client.id);
+    return {
+      name: client.name,
+      capitalDT: totals.capitalDT,
+      avanceDT: totals.avanceDT,
+      totalPayments: totals.totalPayments,
+    };
+  });
 
   const columns = [
     { 
@@ -185,81 +200,89 @@ const Clients = () => {
         title="Gestion des Clients" 
         description="Gérez votre portefeuille clients"
         action={
-          <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouveau Client
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
-              <DialogHeader>
-                <DialogTitle className="font-serif">
-                  {editingClient ? 'Modifier le client' : 'Nouveau client'}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nom / Raison sociale *</Label>
-                  <Input
-                    id="name"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    placeholder="Entrez le nom du client"
-                  />
-                </div>
+          <div className="flex items-center gap-3">
+            <PDFDownloadButton
+              document={<AllClientsExtraitPDF clients={allClientsData} companyName={settings.companyName} />}
+              fileName={`extrait-complet-clients-${new Date().toISOString().split('T')[0]}.pdf`}
+              label="Générer l'extrait PDF complet"
+              variant="outline"
+            />
+            <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Nouveau Client
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="font-serif">
+                    {editingClient ? 'Modifier le client' : 'Nouveau client'}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nom / Raison sociale *</Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="Entrez le nom du client"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="transactionType">Type Client *</Label>
-                  <Select
-                    value={formData.transactionType}
-                    onValueChange={(value: TransactionType) => 
-                      setFormData({ ...formData, transactionType: value })
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="facon">Façon (Service)</SelectItem>
-                      <SelectItem value="bawaza">Bawaza</SelectItem>
-                      <SelectItem value="achat_base">Achat à la base</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="transactionType">Type Client *</Label>
+                    <Select
+                      value={formData.transactionType}
+                      onValueChange={(value: TransactionType) => 
+                        setFormData({ ...formData, transactionType: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="facon">Façon (Service)</SelectItem>
+                        <SelectItem value="bawaza">Bawaza</SelectItem>
+                        <SelectItem value="achat_base">Achat à la base</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Téléphone</Label>
-                  <Input
-                    id="phone"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                    placeholder="Numéro de téléphone"
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Téléphone</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="Numéro de téléphone"
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="observations">Observations</Label>
-                  <Textarea
-                    id="observations"
-                    value={formData.observations}
-                    onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-                    placeholder="Notes additionnelles..."
-                    rows={3}
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="observations">Observations</Label>
+                    <Textarea
+                      id="observations"
+                      value={formData.observations}
+                      onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
+                      placeholder="Notes additionnelles..."
+                      rows={3}
+                    />
+                  </div>
 
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Annuler
-                  </Button>
-                  <Button type="submit">
-                    {editingClient ? 'Enregistrer' : 'Créer'}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                      Annuler
+                    </Button>
+                    <Button type="submit">
+                      {editingClient ? 'Enregistrer' : 'Créer'}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         }
       />
 
