@@ -29,8 +29,10 @@ import {
 } from '@/components/ui/table';
 import { Client, ClientOperation, ClientOperationType, BonReception, PaymentReceipt } from '@/types';
 import { useAppStore } from '@/store/appStore';
-import { Plus, Trash2, X } from 'lucide-react';
+import { Plus, Trash2, X, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
+import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
+import { ClientExtraitPDF } from '@/components/pdf/ClientExtraitPDF';
 
 interface ClientFicheDialogProps {
   client: Client;
@@ -64,7 +66,7 @@ interface TableRow {
 }
 
 export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDialogProps) {
-  const { clientOperations, bonsReception, triturations, paymentReceipts, addClientOperation, deleteClientOperation } = useAppStore();
+  const { clientOperations, bonsReception, triturations, paymentReceipts, settings, addClientOperation, deleteClientOperation } = useAppStore();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newOperation, setNewOperation] = useState({
     type: 'capital_fdr' as ClientOperationType,
@@ -443,6 +445,7 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
                   <TableHead>Capital (DT)</TableHead>
                   <TableHead>Avances (DT)</TableHead>
                   <TableHead>Montant Payé (DT)</TableHead>
+                  <TableHead>Solde (DT)</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -456,9 +459,29 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
                   <TableCell className="font-semibold text-lg text-green-600 dark:text-green-400">
                     {totals.totalPayments.toFixed(3)}
                   </TableCell>
+                  <TableCell className={`font-bold text-lg ${totals.solde >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                    {totals.solde >= 0 ? '+' : ''}{totals.solde.toFixed(3)}
+                  </TableCell>
                 </TableRow>
               </TableBody>
             </Table>
+          </div>
+
+          {/* Bouton Export PDF */}
+          <div className="flex justify-end">
+            <PDFDownloadButton
+              document={
+                <ClientExtraitPDF
+                  client={client}
+                  capitalDT={totals.capitalDT}
+                  avanceDT={totals.avanceDT}
+                  totalPayments={totals.totalPayments}
+                  companyName={settings.companyName}
+                />
+              }
+              fileName={`extrait-${client.code}-${format(new Date(), 'yyyyMMdd')}.pdf`}
+              label="Générer l'extrait PDF"
+            />
           </div>
         </div>
       </DialogContent>
