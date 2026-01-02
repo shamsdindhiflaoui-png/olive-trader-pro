@@ -4,6 +4,7 @@ import { StatCard } from '@/components/ui/stat-card';
 import { DataTable } from '@/components/ui/data-table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useAppStore } from '@/store/appStore';
+import { formatNumber } from '@/lib/utils';
 import { 
   Users, 
   FileText, 
@@ -87,13 +88,13 @@ const Dashboard = () => {
         />
         <StatCard
           title="Huile Produite"
-          value={`${totalHuile.toLocaleString()} L`}
+          value={`${formatNumber(totalHuile)} L`}
           subtitle="Total trituré"
           icon={Droplets}
         />
         <StatCard
           title="Stock Disponible"
-          value={`${stockTotal.toLocaleString()} L`}
+          value={`${formatNumber(stockTotal)} L`}
           subtitle={`${reservoirs.length} réservoirs`}
           icon={Database}
         />
