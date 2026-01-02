@@ -39,6 +39,7 @@ interface AppState {
   // Invoice actions
   addInvoiceFromBR: (data: { brId: string; date: Date; echeance: Date; prixUnitaire: number; tauxTVA: number; droitTimbre: number; observations?: string }) => Invoice | null;
   addInvoiceFromBL: (data: { blId: string; date: Date; echeance: Date; observations?: string }) => Invoice | null;
+  updateInvoice: (id: string, data: { date?: Date; echeance?: Date; tauxTVA?: number; droitTimbre?: number; observations?: string }) => boolean;
   addInvoicePayment: (payment: { invoiceId: string; montant: number; modePayment: string; date: Date; reference?: string; observations?: string }) => boolean;
   
   // Settings actions
@@ -392,6 +393,41 @@ export const useAppStore = create<AppState>()(
         }));
         
         return invoice;
+      },
+      
+      updateInvoice: (id, data) => {
+        const state = get();
+        const invoice = state.invoices.find(i => i.id === id);
+        if (!invoice) return false;
+        
+        let updatedInvoice = { ...invoice };
+        
+        if (data.date) updatedInvoice.date = data.date;
+        if (data.echeance) updatedInvoice.echeance = data.echeance;
+        if (data.observations !== undefined) updatedInvoice.observations = data.observations;
+        
+        // If TVA or timbre changed, recalculate totals
+        if (data.tauxTVA !== undefined || data.droitTimbre !== undefined) {
+          const tauxTVA = data.tauxTVA ?? invoice.tauxTVA;
+          const droitTimbre = data.droitTimbre ?? invoice.droitTimbre;
+          const montantTVA = invoice.montantHT * (tauxTVA / 100);
+          const montantTTC = invoice.montantHT + montantTVA + droitTimbre;
+          
+          updatedInvoice = {
+            ...updatedInvoice,
+            tauxTVA,
+            montantTVA,
+            droitTimbre,
+            montantTTC,
+            resteAPayer: montantTTC - invoice.montantPaye,
+          };
+        }
+        
+        set((state) => ({
+          invoices: state.invoices.map(i => i.id === id ? updatedInvoice : i),
+        }));
+        
+        return true;
       },
       
       addInvoicePayment: (paymentData) => {
