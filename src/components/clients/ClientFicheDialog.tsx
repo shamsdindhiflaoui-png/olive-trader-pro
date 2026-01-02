@@ -44,6 +44,12 @@ const operationTypeLabels: Record<ClientOperationType, string> = {
   br_reception: 'BR Reçu',
 };
 
+const clientTypeLabels: Record<string, string> = {
+  facon: 'Façon (Service)',
+  bawaza: 'Bawaza',
+  achat_base: 'Achat à la base',
+};
+
 interface TableRow {
   id: string;
   date: Date;
@@ -185,7 +191,7 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Type</p>
-              <p className="font-medium text-primary">Bawaza</p>
+              <p className="font-medium text-primary">{clientTypeLabels[client.transactionType] || client.transactionType}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Téléphone</p>
