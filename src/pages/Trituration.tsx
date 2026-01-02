@@ -19,13 +19,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppStore } from '@/store/appStore';
 import { BonReception, Trituration as TriturationT } from '@/types';
-import { Factory, Droplets, Scale, Calendar, Filter } from 'lucide-react';
+import { Factory, Droplets, Scale, Calendar, Filter, Database } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const Trituration = () => {
-  const { clients, bonsReception, triturations, addTrituration } = useAppStore();
+  const { clients, bonsReception, triturations, addTrituration, injectTestBRs } = useAppStore();
   const [selectedBR, setSelectedBR] = useState<BonReception | null>(null);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -162,11 +162,22 @@ const Trituration = () => {
     },
   ];
 
+  const handleInjectTestData = () => {
+    injectTestBRs(20000);
+    toast.success('20 000 BR de test injectés avec succès!');
+  };
+
   return (
     <MainLayout>
       <PageHeader 
         title="Trituration" 
         description="Transformez les olives en huile et suivez l'historique"
+        action={
+          <Button variant="outline" onClick={handleInjectTestData}>
+            <Database className="mr-2 h-4 w-4" />
+            Injecter 20k BR test
+          </Button>
+        }
       />
 
       <Tabs defaultValue="en-cours" className="space-y-6">

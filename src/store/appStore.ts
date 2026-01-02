@@ -54,6 +54,9 @@ interface AppState {
   
   // Settings actions
   updateSettings: (settings: Partial<Settings>) => void;
+  
+  // Test data injection
+  injectTestBRs: (count: number) => void;
 }
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
@@ -559,6 +562,70 @@ export const useAppStore = create<AppState>()(
       updateSettings: (settingsData) => set((state) => ({
         settings: { ...state.settings, ...settingsData }
       })),
+      
+      // Test data injection
+      injectTestBRs: (count: number) => {
+        const state = get();
+        const transactionTypes: ('facon' | 'bawaza' | 'achat_base')[] = ['facon', 'bawaza', 'achat_base'];
+        const clientNames = ['محمد العربي', 'أحمد بن علي', 'فاطمة الزهراء', 'خالد السعيدي', 'سارة المنصوري', 'علي الحسيني', 'نور الدين', 'مريم الفاسي', 'يوسف الإدريسي', 'حسن البكري'];
+        
+        // Generate 10 test clients if none exist
+        let clients = state.clients;
+        if (clients.length === 0) {
+          const newClients: Client[] = clientNames.map((name, idx) => ({
+            id: `test-client-${idx}`,
+            code: `CLT${String(idx + 1).padStart(4, '0')}`,
+            name,
+            transactionType: transactionTypes[idx % 3],
+            phone: `+216 ${Math.floor(Math.random() * 90000000 + 10000000)}`,
+            createdAt: new Date(),
+          }));
+          clients = newClients;
+        }
+        
+        const newBRs: BonReception[] = [];
+        const newTriturations: Trituration[] = [];
+        
+        for (let i = 0; i < count; i++) {
+          const brId = `test-br-${Date.now()}-${i}`;
+          const client = clients[Math.floor(Math.random() * clients.length)];
+          const poidsPlein = Math.floor(Math.random() * 5000) + 1000;
+          const poidsVide = Math.floor(Math.random() * 300) + 100;
+          const poidsNet = poidsPlein - poidsVide;
+          const date = new Date(Date.now() - Math.floor(Math.random() * 365 * 24 * 60 * 60 * 1000));
+          
+          const br: BonReception = {
+            id: brId,
+            number: `BR${String(state.bonsReception.length + i + 1).padStart(5, '0')}`,
+            date,
+            clientId: client.id,
+            poidsPlein,
+            poidsVide,
+            poidsNet,
+            vehicle: `TN-${Math.floor(Math.random() * 9000) + 1000}`,
+            status: 'closed',
+            createdAt: date,
+          };
+          newBRs.push(br);
+          
+          // Create corresponding trituration
+          const quantiteHuile = Math.floor(poidsNet * (Math.random() * 0.1 + 0.15)); // 15-25% rendement
+          const trituration: Trituration = {
+            id: `test-trit-${Date.now()}-${i}`,
+            brId,
+            date,
+            quantiteHuile,
+            createdAt: date,
+          };
+          newTriturations.push(trituration);
+        }
+        
+        set((state) => ({
+          clients: state.clients.length === 0 ? clients : state.clients,
+          bonsReception: [...state.bonsReception, ...newBRs],
+          triturations: [...state.triturations, ...newTriturations],
+        }));
+      },
     }),
     {
       name: 'olive-mill-storage',
