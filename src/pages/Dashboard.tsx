@@ -16,13 +16,13 @@ import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
 const Dashboard = () => {
-  const { clients, bonsReception, triturations, reservoirs, payments } = useAppStore();
+  const { clients, bonsReception, triturations, reservoirs, invoices } = useAppStore();
 
   const openBRs = bonsReception.filter(br => br.status === 'open');
   const closedBRs = bonsReception.filter(br => br.status === 'closed');
   const totalHuile = triturations.reduce((acc, t) => acc + t.quantiteHuile, 0);
   const stockTotal = reservoirs.reduce((acc, r) => acc + r.quantiteActuelle, 0);
-  const unpaidPayments = payments.filter(p => p.status === 'non_paye');
+  const unpaidInvoices = invoices.filter(i => i.status !== 'paye');
 
   const recentBRs = [...bonsReception]
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -130,8 +130,8 @@ const Dashboard = () => {
               <Droplets className="h-5 w-5 text-warning" />
             </div>
             <div>
-              <p className="text-2xl font-semibold font-serif">{unpaidPayments.length}</p>
-              <p className="text-sm text-muted-foreground">Paiements en attente</p>
+              <p className="text-2xl font-semibold font-serif">{unpaidInvoices.length}</p>
+              <p className="text-sm text-muted-foreground">Factures en attente</p>
             </div>
           </div>
         </div>

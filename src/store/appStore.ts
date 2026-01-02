@@ -1,13 +1,12 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Client, BonReception, Trituration, Reservoir, Payment, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment } from '@/types';
+import { Client, BonReception, Trituration, Reservoir, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment, InvoiceSource } from '@/types';
 
 interface AppState {
   clients: Client[];
   bonsReception: BonReception[];
   triturations: Trituration[];
   reservoirs: Reservoir[];
-  payments: Payment[];
   stockAffectations: StockAffectation[];
   stockMovements: StockMovement[];
   bonsLivraison: BonLivraison[];
@@ -37,11 +36,9 @@ interface AppState {
   // Sales actions
   addSale: (sale: { clientId: string; reservoirId: string; quantite: number; prixUnitaire: number; tauxTVA: number; droitTimbre: number; date: Date }) => BonLivraison | null;
   
-  // Payment actions
-  addPayment: (payment: Omit<Payment, 'id' | 'createdAt'>) => void;
-  
   // Invoice actions
-  addInvoice: (invoice: { clientId: string; date: Date; echeance: Date; lignes: Omit<InvoiceLine, 'id'>[]; tauxTVA: number; droitTimbre: number; observations?: string }) => Invoice;
+  addInvoiceFromBR: (data: { brId: string; date: Date; echeance: Date; prixUnitaire: number; tauxTVA: number; droitTimbre: number; observations?: string }) => Invoice | null;
+  addInvoiceFromBL: (data: { blId: string; date: Date; echeance: Date; observations?: string }) => Invoice | null;
   addInvoicePayment: (payment: { invoiceId: string; montant: number; modePayment: string; date: Date; reference?: string; observations?: string }) => boolean;
   
   // Settings actions
@@ -58,7 +55,6 @@ export const useAppStore = create<AppState>()(
       bonsReception: [],
       triturations: [],
       reservoirs: [],
-      payments: [],
       stockAffectations: [],
       stockMovements: [],
       bonsLivraison: [],
@@ -261,6 +257,7 @@ export const useAppStore = create<AppState>()(
           montantHT,
           montantTVA,
           montantTTC,
+          invoiced: false,
           createdAt: new Date(),
         };
         
@@ -295,47 +292,103 @@ export const useAppStore = create<AppState>()(
         return bl;
       },
       
-      // Payment actions
-      addPayment: (paymentData) => set((state) => ({
-        payments: [...state.payments, {
-          ...paymentData,
-          id: generateId(),
-          createdAt: new Date(),
-        }]
-      })),
-      
-      // Invoice actions
-      addInvoice: (invoiceData) => {
+      // Invoice from BR (Façon - service)
+      addInvoiceFromBR: (data) => {
         const state = get();
-        const lignesWithId = invoiceData.lignes.map(l => ({
-          ...l,
-          id: generateId(),
-        }));
-        const montantHT = lignesWithId.reduce((sum, l) => sum + l.montant, 0);
-        const montantTVA = montantHT * (invoiceData.tauxTVA / 100);
-        const montantTTC = montantHT + montantTVA + invoiceData.droitTimbre;
+        const br = state.bonsReception.find(b => b.id === data.brId);
+        if (!br || br.status !== 'closed') return null;
+        
+        // Check if already invoiced
+        const existingInvoice = state.invoices.find(i => i.source === 'br' && i.sourceId === data.brId);
+        if (existingInvoice) return null;
+        
+        const trit = state.triturations.find(t => t.brId === data.brId);
+        if (!trit) return null;
+        
+        const client = state.clients.find(c => c.id === br.clientId);
+        if (!client || client.transactionType !== 'facon') return null;
+        
+        const montantHT = br.poidsNet * data.prixUnitaire;
+        const montantTVA = montantHT * (data.tauxTVA / 100);
+        const montantTTC = montantHT + montantTVA + data.droitTimbre;
         
         const invoice: Invoice = {
           id: generateId(),
           number: generateCode('FAC', state.invoices.length),
-          date: invoiceData.date,
-          echeance: invoiceData.echeance,
-          clientId: invoiceData.clientId,
-          lignes: lignesWithId,
+          date: data.date,
+          echeance: data.echeance,
+          clientId: br.clientId,
+          source: 'br',
+          sourceId: data.brId,
+          sourceNumber: br.number,
+          lignes: [{
+            id: generateId(),
+            description: `Service trituration - ${br.number} (${br.poidsNet} kg olives)`,
+            quantite: br.poidsNet,
+            prixUnitaire: data.prixUnitaire,
+            montant: montantHT,
+          }],
           montantHT,
-          tauxTVA: invoiceData.tauxTVA,
+          tauxTVA: data.tauxTVA,
           montantTVA,
-          droitTimbre: invoiceData.droitTimbre,
+          droitTimbre: data.droitTimbre,
           montantTTC,
           montantPaye: 0,
           resteAPayer: montantTTC,
           status: 'en_attente',
-          observations: invoiceData.observations,
+          observations: data.observations,
           createdAt: new Date(),
         };
         
         set((state) => ({
           invoices: [...state.invoices, invoice],
+        }));
+        
+        return invoice;
+      },
+      
+      // Invoice from BL (Vente stock)
+      addInvoiceFromBL: (data) => {
+        const state = get();
+        const bl = state.bonsLivraison.find(b => b.id === data.blId);
+        if (!bl || bl.invoiced) return null;
+        
+        const client = state.clients.find(c => c.id === bl.clientId);
+        if (!client) return null;
+        
+        const invoice: Invoice = {
+          id: generateId(),
+          number: generateCode('FAC', state.invoices.length),
+          date: data.date,
+          echeance: data.echeance,
+          clientId: bl.clientId,
+          source: 'bl',
+          sourceId: data.blId,
+          sourceNumber: bl.number,
+          lignes: [{
+            id: generateId(),
+            description: `Huile d'olive vierge - ${bl.number}`,
+            quantite: bl.quantite,
+            prixUnitaire: bl.prixUnitaire,
+            montant: bl.montantHT,
+          }],
+          montantHT: bl.montantHT,
+          tauxTVA: bl.tauxTVA,
+          montantTVA: bl.montantTVA,
+          droitTimbre: bl.droitTimbre,
+          montantTTC: bl.montantTTC,
+          montantPaye: 0,
+          resteAPayer: bl.montantTTC,
+          status: 'en_attente',
+          observations: data.observations,
+          createdAt: new Date(),
+        };
+        
+        set((state) => ({
+          invoices: [...state.invoices, invoice],
+          bonsLivraison: state.bonsLivraison.map(b => 
+            b.id === data.blId ? { ...b, invoiced: true } : b
+          ),
         }));
         
         return invoice;
