@@ -47,7 +47,8 @@ const paymentModeLabels: Record<PaymentMode, string> = {
 export default function Paiement() {
   const { bonsReception, triturations, clients, paymentReceipts, settings, addPaymentReceipt } = useAppStore();
 
-  const getClientForReceipt = (receipt: PaymentReceipt) => {
+  const getClientForReceipt = (receipt: PaymentReceipt | null) => {
+    if (!receipt) return null;
     return clients.find(c => c.id === receipt.clientId);
   };
   const { toast } = useToast();
