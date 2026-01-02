@@ -54,14 +54,20 @@ const styles = StyleSheet.create({
   tableHeader: {
     flexDirection: 'row',
     backgroundColor: '#1e40af',
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 8,
   },
   tableHeaderCell: {
     color: '#ffffff',
     fontWeight: 'bold',
-    fontSize: 10,
+    fontSize: 9,
     textAlign: 'center',
+  },
+  tableHeaderArabic: {
+    color: '#ffffff',
+    fontSize: 8,
+    textAlign: 'center',
+    marginTop: 2,
   },
   tableRow: {
     flexDirection: 'row',
@@ -187,11 +193,26 @@ export function AllClientsExtraitPDF({
         {/* Table */}
         <View style={styles.table}>
           <View style={styles.tableHeader}>
-            <Text style={[styles.tableHeaderCell, styles.col1]}>Nom Client</Text>
-            <Text style={[styles.tableHeaderCell, styles.col2]}>Capital (DT)</Text>
-            <Text style={[styles.tableHeaderCell, styles.col3]}>Avances (DT)</Text>
-            <Text style={[styles.tableHeaderCell, styles.col4]}>Montants Payés (DT)</Text>
-            <Text style={[styles.tableHeaderCell, styles.col5]}>Solde (DT)</Text>
+            <View style={styles.col1}>
+              <Text style={styles.tableHeaderCell}>Nom Client</Text>
+              <Text style={styles.tableHeaderArabic}>اسم الحريف</Text>
+            </View>
+            <View style={styles.col2}>
+              <Text style={styles.tableHeaderCell}>Capital (DT)</Text>
+              <Text style={styles.tableHeaderArabic}>رأس المــال</Text>
+            </View>
+            <View style={styles.col3}>
+              <Text style={styles.tableHeaderCell}>Avances (DT)</Text>
+              <Text style={styles.tableHeaderArabic}>تسبقة</Text>
+            </View>
+            <View style={styles.col4}>
+              <Text style={styles.tableHeaderCell}>Montants Payés (DT)</Text>
+              <Text style={styles.tableHeaderArabic}>المبالغ المدفوعة</Text>
+            </View>
+            <View style={styles.col5}>
+              <Text style={styles.tableHeaderCell}>Solde (DT)</Text>
+              <Text style={styles.tableHeaderArabic}>الرصيد</Text>
+            </View>
           </View>
           
           {clients.map((client, index) => {
