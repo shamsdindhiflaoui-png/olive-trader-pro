@@ -28,10 +28,12 @@ import {
 } from '@/components/ui/tabs';
 import { useAppStore } from '@/store/appStore';
 import { BonReception, Trituration, Payment } from '@/types';
-import { CreditCard, Receipt, Clock, CheckCircle } from 'lucide-react';
+import { CreditCard, Receipt, Clock, CheckCircle, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
+import { PaymentReceiptPDF } from '@/components/pdf/PaymentReceiptPDF';
 
 const transactionTypeLabels = {
   facon: 'Façon (Service)',
@@ -202,6 +204,35 @@ const Paiements = () => {
       key: 'status', 
       header: 'Statut',
       render: () => <StatusBadge status="paid" />
+    },
+    { 
+      key: 'actions', 
+      header: 'PDF',
+      render: (p: Payment) => {
+        const br = bonsReception.find(b => b.id === p.brId);
+        const client = br ? clients.find(c => c.id === br.clientId) : null;
+        const trit = br ? tritsByBR[br.id] : null;
+        
+        if (!br || !client || !trit) return null;
+        
+        return (
+          <PDFDownloadButton
+            document={
+              <PaymentReceiptPDF 
+                payment={p} 
+                br={br} 
+                client={client} 
+                trituration={trit}
+                settings={settings} 
+              />
+            }
+            fileName={`Recu-${br.number}.pdf`}
+            label=""
+            size="sm"
+            variant="ghost"
+          />
+        );
+      }
     },
   ];
 

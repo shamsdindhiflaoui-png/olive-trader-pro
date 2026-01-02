@@ -23,13 +23,15 @@ import {
 } from '@/components/ui/select';
 import { useAppStore } from '@/store/appStore';
 import { BonReception } from '@/types';
-import { Plus, Eye } from 'lucide-react';
+import { Plus, Eye, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
+import { BonReceptionPDF } from '@/components/pdf/BonReceptionPDF';
 
 const BonsReception = () => {
-  const { clients, bonsReception, addBR } = useAppStore();
+  const { clients, bonsReception, addBR, settings } = useAppStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [viewingBR, setViewingBR] = useState<BonReception | null>(null);
   const [formData, setFormData] = useState({
@@ -134,15 +136,29 @@ const BonsReception = () => {
     { 
       key: 'actions', 
       header: 'Actions',
-      render: (br: BonReception) => (
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          onClick={(e) => { e.stopPropagation(); setViewingBR(br); }}
-        >
-          <Eye className="h-4 w-4" />
-        </Button>
-      )
+      render: (br: BonReception) => {
+        const client = clients.find(c => c.id === br.clientId);
+        return (
+          <div className="flex items-center gap-1">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={(e) => { e.stopPropagation(); setViewingBR(br); }}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
+            {client && (
+              <PDFDownloadButton
+                document={<BonReceptionPDF br={br} client={client} settings={settings} />}
+                fileName={`${br.number}.pdf`}
+                label=""
+                size="sm"
+                variant="ghost"
+              />
+            )}
+          </div>
+        );
+      }
     },
   ];
 
@@ -280,46 +296,60 @@ const BonsReception = () => {
               Détails du BR {viewingBR?.number}
             </DialogTitle>
           </DialogHeader>
-          {viewingBR && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">Date</p>
-                  <p className="font-medium">{format(new Date(viewingBR.date), 'dd MMMM yyyy', { locale: fr })}</p>
+          {viewingBR && (() => {
+            const client = clients.find(c => c.id === viewingBR.clientId);
+            return (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Date</p>
+                    <p className="font-medium">{format(new Date(viewingBR.date), 'dd MMMM yyyy', { locale: fr })}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Statut</p>
+                    <StatusBadge status={viewingBR.status} />
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Client</p>
+                    <p className="font-medium">{client?.name}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Véhicule</p>
+                    <p className="font-medium">{viewingBR.vehicle || '-'}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Poids Plein</p>
+                    <p className="font-medium">{viewingBR.poidsPlein.toLocaleString()} kg</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">Poids Vide</p>
+                    <p className="font-medium">{viewingBR.poidsVide.toLocaleString()} kg</p>
+                  </div>
+                  <div className="col-span-2">
+                    <p className="text-muted-foreground">Poids Net</p>
+                    <p className="text-2xl font-semibold text-primary">{viewingBR.poidsNet.toLocaleString()} kg</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Statut</p>
-                  <StatusBadge status={viewingBR.status} />
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Client</p>
-                  <p className="font-medium">{clients.find(c => c.id === viewingBR.clientId)?.name}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Véhicule</p>
-                  <p className="font-medium">{viewingBR.vehicle || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Poids Plein</p>
-                  <p className="font-medium">{viewingBR.poidsPlein.toLocaleString()} kg</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Poids Vide</p>
-                  <p className="font-medium">{viewingBR.poidsVide.toLocaleString()} kg</p>
-                </div>
-                <div className="col-span-2">
-                  <p className="text-muted-foreground">Poids Net</p>
-                  <p className="text-2xl font-semibold text-primary">{viewingBR.poidsNet.toLocaleString()} kg</p>
-                </div>
+                {viewingBR.observations && (
+                  <div>
+                    <p className="text-muted-foreground text-sm">Observations</p>
+                    <p className="text-sm">{viewingBR.observations}</p>
+                  </div>
+                )}
+                {client && (
+                  <div className="pt-4 border-t">
+                    <PDFDownloadButton
+                      document={<BonReceptionPDF br={viewingBR} client={client} settings={settings} />}
+                      fileName={`${viewingBR.number}.pdf`}
+                      label="Télécharger le PDF"
+                      variant="default"
+                      size="default"
+                    />
+                  </div>
+                )}
               </div>
-              {viewingBR.observations && (
-                <div>
-                  <p className="text-muted-foreground text-sm">Observations</p>
-                  <p className="text-sm">{viewingBR.observations}</p>
-                </div>
-              )}
-            </div>
-          )}
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </MainLayout>
