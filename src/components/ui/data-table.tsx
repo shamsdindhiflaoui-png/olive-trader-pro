@@ -1,10 +1,11 @@
 import { cn } from '@/lib/utils';
+import { ReactNode } from 'react';
 
 interface DataTableProps<T> {
   columns: {
     key: string;
-    header: string;
-    render?: (item: T) => React.ReactNode;
+    header: string | (() => ReactNode);
+    render?: (item: T) => ReactNode;
     className?: string;
   }[];
   data: T[];
@@ -41,7 +42,7 @@ export function DataTable<T extends { id: string }>({
                   col.className
                 )}
               >
-                {col.header}
+                {typeof col.header === 'function' ? col.header() : col.header}
               </th>
             ))}
           </tr>

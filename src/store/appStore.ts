@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Client, BonReception, Trituration, Reservoir, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment, InvoiceSource, ClientOperation } from '@/types';
+import { Client, BonReception, Trituration, Reservoir, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment, InvoiceSource, ClientOperation, PaymentReceipt, PaymentReceiptLine, PaymentMode } from '@/types';
 
 interface AppState {
   clients: Client[];
@@ -13,6 +13,7 @@ interface AppState {
   bonsLivraison: BonLivraison[];
   invoices: Invoice[];
   invoicePayments: InvoicePayment[];
+  paymentReceipts: PaymentReceipt[];
   settings: Settings;
   
   // Client actions
@@ -48,6 +49,9 @@ interface AppState {
   updateInvoice: (id: string, data: { date?: Date; echeance?: Date; tauxTVA?: number; droitTimbre?: number; observations?: string }) => boolean;
   addInvoicePayment: (payment: { invoiceId: string; montant: number; modePayment: string; date: Date; reference?: string; observations?: string }) => boolean;
   
+  // Payment Receipt actions
+  addPaymentReceipt: (data: { clientId: string; brIds: string[]; prixUnitaire: number; modePayment: PaymentMode; date: Date; observations?: string }) => PaymentReceipt | null;
+  
   // Settings actions
   updateSettings: (settings: Partial<Settings>) => void;
 }
@@ -68,6 +72,7 @@ export const useAppStore = create<AppState>()(
       bonsLivraison: [],
       invoices: [],
       invoicePayments: [],
+      paymentReceipts: [],
       settings: {
         companyName: 'Huilerie Moderne',
         defaultPrixFacon: 0.5,
@@ -483,6 +488,71 @@ export const useAppStore = create<AppState>()(
         }));
         
         return true;
+      },
+      
+      // Payment Receipt actions
+      addPaymentReceipt: (data) => {
+        const state = get();
+        const client = state.clients.find(c => c.id === data.clientId);
+        if (!client) return null;
+        
+        // Verify all BRs belong to the same client and are closed/unpaid
+        const brList: PaymentReceiptLine[] = [];
+        for (const brId of data.brIds) {
+          const br = state.bonsReception.find(b => b.id === brId);
+          if (!br || br.status !== 'closed' || br.clientId !== data.clientId) return null;
+          
+          // Check if already paid
+          const existingReceipt = state.paymentReceipts.find(pr => 
+            pr.lines.some(line => line.brId === brId)
+          );
+          if (existingReceipt) return null;
+          
+          const trituration = state.triturations.find(t => t.brId === brId);
+          if (!trituration) return null;
+          
+          let montant: number;
+          if (client.transactionType === 'facon') {
+            // Façon: based on weight (kg)
+            montant = br.poidsNet * data.prixUnitaire;
+          } else {
+            // Bawaza & Achat Base: based on oil quantity
+            montant = trituration.quantiteHuile * data.prixUnitaire;
+          }
+          
+          brList.push({
+            brId,
+            brNumber: br.number,
+            brDate: br.date,
+            poidsNet: br.poidsNet,
+            quantiteHuile: trituration.quantiteHuile,
+            prixUnitaire: data.prixUnitaire,
+            montant,
+          });
+        }
+        
+        if (brList.length === 0) return null;
+        
+        const totalMontant = brList.reduce((sum, line) => sum + line.montant, 0);
+        
+        const receipt: PaymentReceipt = {
+          id: generateId(),
+          number: generateCode('REC', state.paymentReceipts.length),
+          date: data.date,
+          clientId: data.clientId,
+          transactionType: client.transactionType,
+          lines: brList,
+          totalMontant,
+          modePayment: data.modePayment,
+          observations: data.observations,
+          createdAt: new Date(),
+        };
+        
+        set((state) => ({
+          paymentReceipts: [...state.paymentReceipts, receipt],
+        }));
+        
+        return receipt;
       },
       
       // Settings actions

@@ -160,3 +160,32 @@ export interface InvoicePayment {
   observations?: string;
   createdAt: Date;
 }
+
+// Payment Module Types
+export type PaymentMode = 'especes' | 'virement' | 'compensation';
+
+export type PaymentReceiptStatus = 'paid';
+
+export interface PaymentReceiptLine {
+  brId: string;
+  brNumber: string;
+  brDate: Date;
+  poidsNet: number;
+  quantiteHuile: number;
+  prixUnitaire: number;
+  montant: number;
+}
+
+export interface PaymentReceipt {
+  id: string;
+  number: string;
+  date: Date;
+  clientId: string;
+  client?: Client;
+  transactionType: TransactionType;
+  lines: PaymentReceiptLine[];
+  totalMontant: number;
+  modePayment: PaymentMode;
+  observations?: string;
+  createdAt: Date;
+}
