@@ -15,10 +15,11 @@ import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { useAppStore } from '@/store/appStore';
 import { useToast } from '@/hooks/use-toast';
-import { Receipt, FileText, CheckCircle2, Clock, CreditCard, Wallet, ArrowRightLeft, Download } from 'lucide-react';
+import { Receipt, FileText, CheckCircle2, Clock, CreditCard, Wallet, ArrowRightLeft, Download, Truck } from 'lucide-react';
 import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
 import { PaymentReceiptPDF } from '@/components/pdf/PaymentReceiptPDF';
-import { TransactionType, PaymentMode, PaymentReceipt } from '@/types';
+import { BonLivraisonPDF } from '@/components/pdf/BonLivraisonPDF';
+import { TransactionType, PaymentMode, PaymentReceipt, BonLivraison } from '@/types';
 
 interface BRToPay {
   id: string;
@@ -45,7 +46,7 @@ const paymentModeLabels: Record<PaymentMode, string> = {
 };
 
 export default function Paiement() {
-  const { bonsReception, triturations, clients, paymentReceipts, settings, addPaymentReceipt } = useAppStore();
+  const { bonsReception, triturations, clients, paymentReceipts, settings, addPaymentReceipt, bonsLivraison } = useAppStore();
 
   const getClientForReceipt = (receipt: PaymentReceipt | null) => {
     if (!receipt) return null;
@@ -379,6 +380,59 @@ export default function Paiement() {
     return clientIds.map(id => clients.find(c => c.id === id)).filter(Boolean);
   }, [brsWithTrituration, clients]);
 
+  // BL columns for delivery notes
+  const blColumns = [
+    {
+      key: 'number',
+      header: 'N° BL',
+      render: (bl: BonLivraison) => <span className="font-mono font-medium text-primary">{bl.number}</span>,
+    },
+    {
+      key: 'date',
+      header: 'Date',
+      render: (bl: BonLivraison) => format(new Date(bl.date), 'dd/MM/yyyy', { locale: fr }),
+    },
+    {
+      key: 'client',
+      header: 'Client',
+      render: (bl: BonLivraison) => {
+        const client = clients.find(c => c.id === bl.clientId);
+        return client?.name || '-';
+      },
+    },
+    {
+      key: 'quantite',
+      header: 'Quantité',
+      render: (bl: BonLivraison) => `${bl.quantite.toLocaleString()} L`,
+    },
+    {
+      key: 'prixUnitaire',
+      header: 'Prix U.',
+      render: (bl: BonLivraison) => `${bl.prixUnitaire.toFixed(3)} DT`,
+    },
+    {
+      key: 'montantTTC',
+      header: 'Montant TTC',
+      render: (bl: BonLivraison) => <span className="font-semibold">{bl.montantTTC.toFixed(3)} DT</span>,
+    },
+    {
+      key: 'actions',
+      header: '',
+      render: (bl: BonLivraison) => {
+        const client = clients.find(c => c.id === bl.clientId);
+        return client ? (
+          <PDFDownloadButton
+            document={<BonLivraisonPDF bl={bl} client={client} settings={settings} />}
+            fileName={`BL_${bl.number}.pdf`}
+            label=""
+            variant="ghost"
+            size="icon"
+          />
+        ) : null;
+      },
+    },
+  ];
+
   return (
     <MainLayout>
       <PageHeader 
@@ -466,6 +520,19 @@ export default function Paiement() {
           columns={brColumns}
           data={filteredBRs}
           emptyMessage="Aucun BR fermé disponible"
+        />
+      </div>
+
+      {/* BL List - Ventes d'huile */}
+      <div className="mb-8">
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Truck className="h-5 w-5 text-primary" />
+          Bons de Livraison (Ventes d'huile)
+        </h3>
+        <DataTable
+          columns={blColumns}
+          data={bonsLivraison}
+          emptyMessage="Aucun bon de livraison"
         />
       </div>
 
