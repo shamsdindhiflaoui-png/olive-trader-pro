@@ -91,7 +91,6 @@ const Dashboard = () => {
           subtitle="Total trituré"
           icon={Droplets}
           variant="primary"
-          darkText
         />
         <StatCard
           title="Stock Disponible"
