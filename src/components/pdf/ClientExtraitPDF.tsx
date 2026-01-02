@@ -4,16 +4,16 @@ import { fr } from 'date-fns/locale';
 import { Client } from '@/types';
 
 Font.register({
-  family: 'Roboto',
+  family: 'Amiri',
   fonts: [
-    { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-regular-webfont.ttf', fontWeight: 'normal' },
-    { src: 'https://cdnjs.cloudflare.com/ajax/libs/ink/3.1.10/fonts/Roboto/roboto-bold-webfont.ttf', fontWeight: 'bold' },
+    { src: 'https://fonts.gstatic.com/s/amiri/v27/J7aRnpd8CGxBHqUpvrIw74NL.ttf', fontWeight: 'normal' },
+    { src: 'https://fonts.gstatic.com/s/amiri/v27/J7acnpd8CGxBHp2VkZY4xJ9CGyAa.ttf', fontWeight: 'bold' },
   ],
 });
 
 const styles = StyleSheet.create({
   page: {
-    fontFamily: 'Roboto',
+    fontFamily: 'Amiri',
     fontSize: 11,
     padding: 40,
     backgroundColor: '#ffffff',
