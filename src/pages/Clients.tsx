@@ -22,8 +22,9 @@ import {
 } from '@/components/ui/select';
 import { useAppStore } from '@/store/appStore';
 import { Client, TransactionType } from '@/types';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { ClientFicheDialog } from '@/components/clients/ClientFicheDialog';
 
 const transactionTypeLabels: Record<TransactionType, string> = {
   facon: 'Façon (Service)',
@@ -35,6 +36,7 @@ const Clients = () => {
   const { clients, addClient, updateClient, deleteClient } = useAppStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
+  const [ficheClient, setFicheClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     transactionType: 'facon' as TransactionType,
@@ -114,6 +116,16 @@ const Clients = () => {
       header: 'Actions',
       render: (client: Client) => (
         <div className="flex items-center gap-2">
+          {client.transactionType === 'bawaza' && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={(e) => { e.stopPropagation(); setFicheClient(client); }}
+              title="Voir la fiche"
+            >
+              <FileText className="h-4 w-4" />
+            </Button>
+          )}
           <Button 
             variant="ghost" 
             size="sm" 
@@ -223,6 +235,15 @@ const Clients = () => {
         data={clients}
         emptyMessage="Aucun client enregistré. Cliquez sur 'Nouveau Client' pour commencer."
       />
+
+      {/* Client Fiche Dialog for Bawaza clients */}
+      {ficheClient && (
+        <ClientFicheDialog
+          client={ficheClient}
+          open={!!ficheClient}
+          onOpenChange={(open) => !open && setFicheClient(null)}
+        />
+      )}
     </MainLayout>
   );
 };

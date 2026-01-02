@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Client, BonReception, Trituration, Reservoir, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment, InvoiceSource } from '@/types';
+import { Client, BonReception, Trituration, Reservoir, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment, InvoiceSource, ClientOperation } from '@/types';
 
 interface AppState {
   clients: Client[];
+  clientOperations: ClientOperation[];
   bonsReception: BonReception[];
   triturations: Trituration[];
   reservoirs: Reservoir[];
@@ -18,6 +19,11 @@ interface AppState {
   addClient: (client: Omit<Client, 'id' | 'code' | 'createdAt'>) => void;
   updateClient: (id: string, client: Partial<Client>) => void;
   deleteClient: (id: string) => void;
+  
+  // Client operations (Bawaza)
+  addClientOperation: (operation: Omit<ClientOperation, 'id' | 'createdAt'>) => void;
+  deleteClientOperation: (id: string) => void;
+  getClientOperations: (clientId: string) => ClientOperation[];
   
   // BR actions
   addBR: (br: Omit<BonReception, 'id' | 'number' | 'poidsNet' | 'status' | 'createdAt'>) => void;
@@ -53,6 +59,7 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       clients: [],
+      clientOperations: [],
       bonsReception: [],
       triturations: [],
       reservoirs: [],
@@ -85,6 +92,23 @@ export const useAppStore = create<AppState>()(
       deleteClient: (id) => set((state) => ({
         clients: state.clients.filter(c => c.id !== id)
       })),
+      
+      // Client operations (Bawaza - capital FDR, avances)
+      addClientOperation: (operationData) => set((state) => ({
+        clientOperations: [...state.clientOperations, {
+          ...operationData,
+          id: generateId(),
+          createdAt: new Date(),
+        }]
+      })),
+      
+      deleteClientOperation: (id) => set((state) => ({
+        clientOperations: state.clientOperations.filter(op => op.id !== id)
+      })),
+      
+      getClientOperations: (clientId) => {
+        return get().clientOperations.filter(op => op.clientId === clientId);
+      },
       
       // BR actions
       addBR: (brData) => set((state) => ({

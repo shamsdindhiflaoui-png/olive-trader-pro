@@ -1,5 +1,20 @@
 export type TransactionType = 'facon' | 'bawaza' | 'achat_base';
 
+export type ClientOperationType = 'capital_fdr' | 'avance' | 'br_reception';
+
+export interface ClientOperation {
+  id: string;
+  clientId: string;
+  type: ClientOperationType;
+  date: Date;
+  libelle: string;
+  montantDT?: number;
+  quantiteKg?: number;
+  reference?: string; // BR number, etc.
+  observations?: string;
+  createdAt: Date;
+}
+
 export interface Client {
   id: string;
   code: string;
