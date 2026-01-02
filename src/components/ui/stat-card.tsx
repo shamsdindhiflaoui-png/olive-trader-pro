@@ -6,7 +6,7 @@ interface StatCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
-  subtitleDark?: boolean;
+  darkText?: boolean;
   icon: LucideIcon | ReactNode;
   trend?: {
     value: number;
@@ -15,7 +15,7 @@ interface StatCardProps {
   variant?: 'default' | 'primary' | 'accent';
 }
 
-export function StatCard({ title, value, subtitle, subtitleDark, icon, trend, variant = 'default' }: StatCardProps) {
+export function StatCard({ title, value, subtitle, darkText, icon, trend, variant = 'default' }: StatCardProps) {
   const renderIcon = () => {
     if (isValidElement(icon)) {
       return icon;
@@ -33,15 +33,18 @@ export function StatCard({ title, value, subtitle, subtitleDark, icon, trend, va
         <div>
           <p className={cn(
             "text-sm font-medium",
-            variant === 'default' ? "text-muted-foreground" : "opacity-80"
+            darkText ? "text-foreground" : (variant === 'default' ? "text-muted-foreground" : "opacity-80")
           )}>
             {title}
           </p>
-          <p className="mt-2 text-3xl font-semibold font-serif">{value}</p>
+          <p className={cn(
+            "mt-2 text-3xl font-semibold font-serif",
+            darkText && "text-foreground"
+          )}>{value}</p>
           {subtitle && (
             <p className={cn(
               "mt-1 text-sm",
-              subtitleDark ? "text-foreground font-medium" : (variant === 'default' ? "text-muted-foreground" : "opacity-70")
+              darkText ? "text-foreground font-medium" : (variant === 'default' ? "text-muted-foreground" : "opacity-70")
             )}>
               {subtitle}
             </p>
