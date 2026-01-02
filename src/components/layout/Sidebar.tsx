@@ -17,7 +17,7 @@ const navItems = [
   { path: '/bons-reception', label: 'Bons de Réception', icon: FileText },
   { path: '/trituration', label: 'Trituration', icon: Factory },
   { path: '/stock', label: 'Stock', icon: Database },
-  { path: '/factures', label: 'Factures', icon: CreditCard },
+  { path: '/paiement', label: 'Paiement', icon: CreditCard },
   { path: '/parametres', label: 'Paramètres', icon: Settings },
 ];
 

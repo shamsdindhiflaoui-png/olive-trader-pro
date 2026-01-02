@@ -1,11 +1,12 @@
 import { cn } from '@/lib/utils';
 import { LucideIcon } from 'lucide-react';
+import { ReactNode, isValidElement } from 'react';
 
 interface StatCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
-  icon: LucideIcon;
+  icon: LucideIcon | ReactNode;
   trend?: {
     value: number;
     isPositive: boolean;
@@ -13,7 +14,14 @@ interface StatCardProps {
   variant?: 'default' | 'primary' | 'accent';
 }
 
-export function StatCard({ title, value, subtitle, icon: Icon, trend, variant = 'default' }: StatCardProps) {
+export function StatCard({ title, value, subtitle, icon, trend, variant = 'default' }: StatCardProps) {
+  const renderIcon = () => {
+    if (isValidElement(icon)) {
+      return icon;
+    }
+    const IconComponent = icon as LucideIcon;
+    return <IconComponent className="h-6 w-6" />;
+  };
   return (
     <div className={cn(
       "stat-card animate-fade-in",
@@ -50,7 +58,7 @@ export function StatCard({ title, value, subtitle, icon: Icon, trend, variant = 
           "flex h-12 w-12 items-center justify-center rounded-xl",
           variant === 'default' ? "bg-primary/10 text-primary" : "bg-white/20"
         )}>
-          <Icon className="h-6 w-6" />
+          {renderIcon()}
         </div>
       </div>
     </div>
