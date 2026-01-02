@@ -90,7 +90,6 @@ const Dashboard = () => {
           value={`${totalHuile.toLocaleString()} L`}
           subtitle="Total trituré"
           icon={Droplets}
-          variant="primary"
         />
         <StatCard
           title="Stock Disponible"
