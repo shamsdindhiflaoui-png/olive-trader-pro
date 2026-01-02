@@ -27,7 +27,7 @@ import {
   TableRow,
   TableFooter,
 } from '@/components/ui/table';
-import { Client, ClientOperation, ClientOperationType, BonReception } from '@/types';
+import { Client, ClientOperation, ClientOperationType, BonReception, PaymentReceipt } from '@/types';
 import { useAppStore } from '@/store/appStore';
 import { Plus, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
@@ -64,7 +64,7 @@ interface TableRow {
 }
 
 export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDialogProps) {
-  const { clientOperations, bonsReception, triturations, invoices, addClientOperation, deleteClientOperation } = useAppStore();
+  const { clientOperations, bonsReception, triturations, paymentReceipts, addClientOperation, deleteClientOperation } = useAppStore();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newOperation, setNewOperation] = useState({
     type: 'capital_fdr' as ClientOperationType,
@@ -91,10 +91,22 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
     return triturations.find(t => t.brId === brId);
   };
 
-  // Get invoice status for BR
-  const getInvoiceForBR = (brId: string) => {
-    return invoices.find(inv => inv.source === 'br' && inv.sourceId === brId);
+  // Get payment receipt for BR
+  const getPaymentReceiptForBR = (brId: string) => {
+    return paymentReceipts.find(pr => pr.lines.some(line => line.brId === brId));
   };
+
+  // Get all payment receipts for this client
+  const clientPaymentReceipts = useMemo(() =>
+    paymentReceipts.filter(pr => pr.clientId === client.id),
+    [paymentReceipts, client.id]
+  );
+
+  // Calculate total payments received
+  const totalPaymentsReceived = useMemo(() =>
+    clientPaymentReceipts.reduce((sum, pr) => sum + pr.totalMontant, 0),
+    [clientPaymentReceipts]
+  );
 
   // Combine all data into table rows
   const tableRows = useMemo(() => {
@@ -117,8 +129,8 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
     // Add BRs
     clientBRs.forEach(br => {
       const trituration = getTriturationForBR(br.id);
-      const invoice = getInvoiceForBR(br.id);
-      const isPaid = invoice?.status === 'paye';
+      const paymentReceipt = getPaymentReceiptForBR(br.id);
+      const isPaid = !!paymentReceipt;
       
       rows.push({
         id: `br-${br.id}`,
@@ -140,7 +152,7 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
 
   // Calculate totals
   const totals = useMemo(() => {
-    return tableRows.reduce(
+    const base = tableRows.reduce(
       (acc, row) => ({
         capitalDT: acc.capitalDT + (row.capitalDT || 0),
         avanceDT: acc.avanceDT + (row.avanceDT || 0),
@@ -151,7 +163,12 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
       }),
       { capitalDT: 0, avanceDT: 0, brKg: 0, huileL: 0, paidKg: 0, unpaidKg: 0 }
     );
-  }, [tableRows]);
+    
+    // Calculate balance: (Capital + Avances) - Total Payments Received
+    const solde = (base.capitalDT + base.avanceDT) - totalPaymentsReceived;
+    
+    return { ...base, totalPayments: totalPaymentsReceived, solde };
+  }, [tableRows, totalPaymentsReceived]);
 
   const handleAddOperation = () => {
     if (!newOperation.libelle.trim()) {
@@ -441,6 +458,52 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
               <span className="font-semibold text-sm text-red-700 dark:text-red-400">{totals.unpaidKg.toLocaleString()} kg</span>
             </div>
           </div>
+
+          {/* Payments Received & Balance */}
+          <div className="flex flex-wrap gap-3 p-3 bg-muted/50 rounded-lg border border-border">
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">Paiements reçus:</span>
+              <span className="font-semibold text-sm text-green-600 dark:text-green-400">{totals.totalPayments.toFixed(3)} DT</span>
+            </div>
+            <div className="flex-1" />
+            <div className="flex items-center gap-2 px-3 py-1 rounded-lg border-2 border-primary bg-primary/5">
+              <span className="text-xs font-medium">Solde compte:</span>
+              <span className={`font-bold text-lg ${totals.solde >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                {totals.solde >= 0 ? '+' : ''}{totals.solde.toFixed(3)} DT
+              </span>
+            </div>
+          </div>
+
+          {/* Payment Receipts History */}
+          {clientPaymentReceipts.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-muted-foreground">Historique des paiements reçus</h4>
+              <div className="border border-border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/30">
+                      <TableHead className="w-[100px]">N° Reçu</TableHead>
+                      <TableHead className="w-[100px]">Date</TableHead>
+                      <TableHead>Mode</TableHead>
+                      <TableHead className="text-right">Montant (DT)</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {clientPaymentReceipts.map(pr => (
+                      <TableRow key={pr.id}>
+                        <TableCell className="font-mono text-xs">{pr.number}</TableCell>
+                        <TableCell className="text-sm">{format(new Date(pr.date), 'dd/MM/yyyy', { locale: fr })}</TableCell>
+                        <TableCell className="text-sm capitalize">{pr.modePayment}</TableCell>
+                        <TableCell className="text-right font-medium text-green-600 dark:text-green-400">
+                          +{pr.totalMontant.toFixed(3)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
