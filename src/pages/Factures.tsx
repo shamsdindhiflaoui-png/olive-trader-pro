@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/tabs';
 import { useAppStore } from '@/store/appStore';
 import { Invoice, BonReception, BonLivraison } from '@/types';
-import { Plus, FileText, CreditCard, Clock, CheckCircle, AlertCircle, Download, Eye, Receipt, ShoppingCart } from 'lucide-react';
+import { Plus, FileText, CreditCard, Clock, CheckCircle, AlertCircle, Download, Eye, Receipt, ShoppingCart, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isWithinInterval, startOfDay, endOfDay, addDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -59,6 +59,7 @@ const Factures = () => {
     settings,
     addInvoiceFromBR,
     addInvoiceFromBL,
+    updateInvoice,
     addInvoicePayment,
   } = useAppStore();
   
@@ -66,6 +67,7 @@ const Factures = () => {
   const [isInvoiceBLDialogOpen, setIsInvoiceBLDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
   const [selectedBR, setSelectedBR] = useState<BonReception | null>(null);
   const [selectedBL, setSelectedBL] = useState<BonLivraison | null>(null);
@@ -95,6 +97,14 @@ const Factures = () => {
     modePayment: 'especes',
     date: format(new Date(), 'yyyy-MM-dd'),
     reference: '',
+    observations: '',
+  });
+
+  const [editForm, setEditForm] = useState({
+    date: '',
+    echeance: '',
+    tauxTVA: '',
+    droitTimbre: '',
     observations: '',
   });
 
@@ -260,6 +270,39 @@ const Factures = () => {
     setIsDetailDialogOpen(true);
   };
 
+  const openEditDialog = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setEditForm({
+      date: format(new Date(invoice.date), 'yyyy-MM-dd'),
+      echeance: format(new Date(invoice.echeance), 'yyyy-MM-dd'),
+      tauxTVA: invoice.tauxTVA.toString(),
+      droitTimbre: invoice.droitTimbre.toString(),
+      observations: invoice.observations || '',
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleUpdateInvoice = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedInvoice) return;
+
+    const success = updateInvoice(selectedInvoice.id, {
+      date: new Date(editForm.date),
+      echeance: new Date(editForm.echeance),
+      tauxTVA: Number(editForm.tauxTVA),
+      droitTimbre: Number(editForm.droitTimbre),
+      observations: editForm.observations || undefined,
+    });
+
+    if (success) {
+      toast.success('Facture modifiée avec succès');
+      setIsEditDialogOpen(false);
+    } else {
+      toast.error('Erreur lors de la modification');
+    }
+  };
+
   const openBRInvoiceDialog = (br: BonReception) => {
     setSelectedBR(br);
     setBrInvoiceForm({
@@ -351,6 +394,9 @@ const Factures = () => {
           <div className="flex gap-1">
             <Button variant="ghost" size="sm" onClick={() => openDetailDialog(i)}>
               <Eye className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => openEditDialog(i)}>
+              <Pencil className="h-4 w-4" />
             </Button>
             {i.status !== 'paye' && (
               <Button variant="ghost" size="sm" onClick={() => openPaymentDialog(i)}>
@@ -1024,6 +1070,91 @@ const Factures = () => {
                 </Button>
               </div>
             </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Invoice Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Modifier la facture</DialogTitle>
+          </DialogHeader>
+          {selectedInvoice && (
+            <form onSubmit={handleUpdateInvoice} className="space-y-4">
+              <div className="p-4 rounded-lg bg-muted space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">N° Facture</span>
+                  <span className="font-medium">{selectedInvoice.number}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Client</span>
+                  <span className="font-medium">{clients.find(c => c.id === selectedInvoice.clientId)?.name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Montant HT</span>
+                  <span className="font-semibold text-primary">{selectedInvoice.montantHT.toFixed(3)} DT</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Date facture *</Label>
+                  <Input
+                    type="date"
+                    value={editForm.date}
+                    onChange={(e) => setEditForm({ ...editForm, date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Échéance *</Label>
+                  <Input
+                    type="date"
+                    value={editForm.echeance}
+                    onChange={(e) => setEditForm({ ...editForm, echeance: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Taux TVA (%)</Label>
+                  <Input
+                    type="number"
+                    value={editForm.tauxTVA}
+                    onChange={(e) => setEditForm({ ...editForm, tauxTVA: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Droit de Timbre (DT)</Label>
+                  <Input
+                    type="number"
+                    value={editForm.droitTimbre}
+                    onChange={(e) => setEditForm({ ...editForm, droitTimbre: e.target.value })}
+                    step="0.001"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Observations</Label>
+                <Textarea
+                  value={editForm.observations}
+                  onChange={(e) => setEditForm({ ...editForm, observations: e.target.value })}
+                  placeholder="Remarques ou notes sur la facture..."
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button type="submit">
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Enregistrer
+                </Button>
+              </div>
+            </form>
           )}
         </DialogContent>
       </Dialog>
