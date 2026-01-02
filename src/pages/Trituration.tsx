@@ -26,13 +26,15 @@ import {
 } from '@/components/ui/select';
 import { useAppStore } from '@/store/appStore';
 import { BonReception, Trituration as TriturationT } from '@/types';
-import { Factory, Droplets, Scale, Calendar, Filter, Search, User } from 'lucide-react';
+import { Factory, Droplets, Scale, Calendar, Filter, Search, User, FileDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
+import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
+import { BREnCoursPDF } from '@/components/pdf/BREnCoursPDF';
 import { fr } from 'date-fns/locale';
 
 const Trituration = () => {
-  const { clients, bonsReception, triturations, addTrituration } = useAppStore();
+  const { clients, bonsReception, triturations, addTrituration, settings } = useAppStore();
   const [selectedBR, setSelectedBR] = useState<BonReception | null>(null);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
@@ -315,11 +317,31 @@ const Trituration = () => {
                     </Button>
                   )}
                 </div>
-                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
-                  <Scale className="h-5 w-5 text-primary" />
-                  <span className="text-sm font-medium">Total en cours:</span>
-                  <span className="text-lg font-bold text-primary">{totalPoidsEnCours.toLocaleString()} kg</span>
-                  <span className="text-sm text-muted-foreground">({filteredOpenBRs.length} BR)</span>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
+                    <Scale className="h-5 w-5 text-primary" />
+                    <span className="text-sm font-medium">Total en cours:</span>
+                    <span className="text-lg font-bold text-primary">{totalPoidsEnCours.toLocaleString()} kg</span>
+                    <span className="text-sm text-muted-foreground">({filteredOpenBRs.length} BR)</span>
+                  </div>
+                  {filteredOpenBRs.length > 0 && (
+                    <PDFDownloadButton
+                      document={
+                        <BREnCoursPDF
+                          brs={filteredOpenBRs}
+                          clients={clients}
+                          settings={settings}
+                          filterInfo={
+                            filterClientEnCours !== 'all'
+                              ? clientsWithOpenBRs.find(c => c.id === filterClientEnCours)?.name
+                              : undefined
+                          }
+                        />
+                      }
+                      fileName={`BR-en-cours-${format(new Date(), 'yyyy-MM-dd')}.pdf`}
+                      label="Exporter PDF"
+                    />
+                  )}
                 </div>
               </div>
             </CardContent>
