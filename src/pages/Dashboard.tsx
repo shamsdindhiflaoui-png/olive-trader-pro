@@ -1,0 +1,185 @@
+import { MainLayout } from '@/components/layout/MainLayout';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { StatCard } from '@/components/ui/stat-card';
+import { DataTable } from '@/components/ui/data-table';
+import { StatusBadge } from '@/components/ui/status-badge';
+import { useAppStore } from '@/store/appStore';
+import { 
+  Users, 
+  FileText, 
+  Droplets, 
+  Database,
+  TrendingUp,
+  Clock
+} from 'lucide-react';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+
+const Dashboard = () => {
+  const { clients, bonsReception, triturations, reservoirs, payments } = useAppStore();
+
+  const openBRs = bonsReception.filter(br => br.status === 'open');
+  const closedBRs = bonsReception.filter(br => br.status === 'closed');
+  const totalHuile = triturations.reduce((acc, t) => acc + t.quantiteHuile, 0);
+  const stockTotal = reservoirs.reduce((acc, r) => acc + r.quantiteActuelle, 0);
+  const unpaidPayments = payments.filter(p => p.status === 'non_paye');
+
+  const recentBRs = [...bonsReception]
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 5);
+
+  const brColumns = [
+    { 
+      key: 'number', 
+      header: 'N° BR',
+      render: (br: typeof bonsReception[0]) => (
+        <span className="font-medium text-primary">{br.number}</span>
+      )
+    },
+    { 
+      key: 'date', 
+      header: 'Date',
+      render: (br: typeof bonsReception[0]) => format(new Date(br.date), 'dd MMM yyyy', { locale: fr })
+    },
+    { 
+      key: 'client', 
+      header: 'Client',
+      render: (br: typeof bonsReception[0]) => {
+        const client = clients.find(c => c.id === br.clientId);
+        return client?.name || '-';
+      }
+    },
+    { 
+      key: 'poidsNet', 
+      header: 'Poids Net',
+      render: (br: typeof bonsReception[0]) => `${br.poidsNet.toLocaleString()} kg`
+    },
+    { 
+      key: 'status', 
+      header: 'Statut',
+      render: (br: typeof bonsReception[0]) => (
+        <StatusBadge status={br.status} />
+      )
+    },
+  ];
+
+  return (
+    <MainLayout>
+      <PageHeader 
+        title="Tableau de bord" 
+        description="Vue d'ensemble de votre huilerie"
+      />
+
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+        <StatCard
+          title="Clients"
+          value={clients.length}
+          subtitle="Total enregistrés"
+          icon={Users}
+        />
+        <StatCard
+          title="BR Ouverts"
+          value={openBRs.length}
+          subtitle="En attente de trituration"
+          icon={Clock}
+          variant="accent"
+        />
+        <StatCard
+          title="Huile Produite"
+          value={`${totalHuile.toLocaleString()} L`}
+          subtitle="Total trituré"
+          icon={Droplets}
+          variant="primary"
+        />
+        <StatCard
+          title="Stock Disponible"
+          value={`${stockTotal.toLocaleString()} L`}
+          subtitle={`${reservoirs.length} réservoirs`}
+          icon={Database}
+        />
+      </div>
+
+      {/* Secondary Stats */}
+      <div className="grid gap-4 md:grid-cols-3 mb-8">
+        <div className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold font-serif">{bonsReception.length}</p>
+              <p className="text-sm text-muted-foreground">Bons de réception total</p>
+            </div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-success/10">
+              <TrendingUp className="h-5 w-5 text-success" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold font-serif">{closedBRs.length}</p>
+              <p className="text-sm text-muted-foreground">BR traités</p>
+            </div>
+          </div>
+        </div>
+        <div className="stat-card">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-warning/10">
+              <Droplets className="h-5 w-5 text-warning" />
+            </div>
+            <div>
+              <p className="text-2xl font-semibold font-serif">{unpaidPayments.length}</p>
+              <p className="text-sm text-muted-foreground">Paiements en attente</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recent BRs */}
+      <div className="mb-8">
+        <h2 className="font-serif text-xl font-semibold mb-4">Derniers Bons de Réception</h2>
+        <DataTable
+          columns={brColumns}
+          data={recentBRs}
+          emptyMessage="Aucun bon de réception"
+        />
+      </div>
+
+      {/* Reservoirs Status */}
+      {reservoirs.length > 0 && (
+        <div>
+          <h2 className="font-serif text-xl font-semibold mb-4">État des Réservoirs</h2>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {reservoirs.map((reservoir) => {
+              const fillPercentage = (reservoir.quantiteActuelle / reservoir.capaciteMax) * 100;
+              return (
+                <div key={reservoir.id} className="stat-card">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="font-medium">{reservoir.code}</span>
+                    <StatusBadge status={reservoir.status} />
+                  </div>
+                  <div className="mb-2">
+                    <div className="h-3 rounded-full bg-muted overflow-hidden">
+                      <div 
+                        className="h-full rounded-full golden-gradient transition-all duration-500"
+                        style={{ width: `${fillPercentage}%` }}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <span>{reservoir.quantiteActuelle.toLocaleString()} L</span>
+                    <span>{reservoir.capaciteMax.toLocaleString()} L max</span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </MainLayout>
+  );
+};
+
+export default Dashboard;
