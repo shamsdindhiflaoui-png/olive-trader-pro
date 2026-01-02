@@ -17,9 +17,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useAppStore } from '@/store/appStore';
 import { BonReception, Trituration as TriturationT } from '@/types';
-import { Factory, Droplets, Scale, Calendar, Filter, Search } from 'lucide-react';
+import { Factory, Droplets, Scale, Calendar, Filter, Search, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -38,8 +45,14 @@ const Trituration = () => {
   const [dateFin, setDateFin] = useState('');
   const [searchBR, setSearchBR] = useState('');
   const [searchBREnCours, setSearchBREnCours] = useState('');
-
+  const [filterClientEnCours, setFilterClientEnCours] = useState('all');
   const openBRs = bonsReception.filter(br => br.status === 'open');
+  
+  // Clients ayant des BR en cours
+  const clientsWithOpenBRs = useMemo(() => {
+    const clientIds = [...new Set(openBRs.map(br => br.clientId))];
+    return clients.filter(c => clientIds.includes(c.id));
+  }, [openBRs, clients]);
   
   // Filtrer et trier les BR en cours
   const filteredOpenBRs = useMemo(() => {
@@ -49,9 +62,13 @@ const Trituration = () => {
       result = result.filter(br => br.number.toLowerCase().includes(searchBREnCours.toLowerCase()));
     }
     
+    if (filterClientEnCours && filterClientEnCours !== 'all') {
+      result = result.filter(br => br.clientId === filterClientEnCours);
+    }
+    
     // Trier par date chronologique (plus ancien en premier)
     return [...result].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [openBRs, searchBREnCours]);
+  }, [openBRs, searchBREnCours, filterClientEnCours]);
   
   // Somme des quantités en cours
   const totalPoidsEnCours = useMemo(() => {
@@ -149,6 +166,52 @@ const Trituration = () => {
     setSearchBR('');
   };
 
+  const resetFiltersEnCours = () => {
+    setSearchBREnCours('');
+    setFilterClientEnCours('all');
+  };
+
+  // Colonnes pour le tableau des BR en cours
+  const columnsEnCours = [
+    {
+      key: 'date',
+      header: 'Date réception',
+      render: (br: BonReception) => format(new Date(br.date), 'dd/MM/yyyy', { locale: fr }),
+    },
+    {
+      key: 'number',
+      header: 'N° BR',
+      render: (br: BonReception) => <span className="font-medium">{br.number}</span>,
+    },
+    {
+      key: 'client',
+      header: 'Client',
+      render: (br: BonReception) => getClient(br.clientId)?.name || '-',
+    },
+    {
+      key: 'vehicle',
+      header: 'Véhicule',
+      render: (br: BonReception) => br.vehicle || '-',
+    },
+    {
+      key: 'poidsNet',
+      header: 'Poids Net (kg)',
+      render: (br: BonReception) => `${br.poidsNet.toLocaleString()} kg`,
+      className: 'text-right font-semibold',
+    },
+    {
+      key: 'actions',
+      header: 'Actions',
+      render: (br: BonReception) => (
+        <Button size="sm" variant="outline" onClick={() => setSelectedBR(br)}>
+          <Droplets className="mr-1 h-3 w-3" />
+          Triturer
+        </Button>
+      ),
+      className: 'text-right',
+    },
+  ];
+
   const columns = [
     {
       key: 'date',
@@ -211,89 +274,74 @@ const Trituration = () => {
 
         {/* Onglet BR en attente */}
         <TabsContent value="en-cours" className="space-y-6">
-          {/* Somme et recherche */}
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="text"
-                  placeholder="Rechercher par N° BR"
-                  value={searchBREnCours}
-                  onChange={(e) => setSearchBREnCours(e.target.value)}
-                  className="w-[220px] pl-9"
-                />
+          {/* Filtres et somme */}
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div className="flex flex-wrap items-end gap-4">
+                  <div className="space-y-2">
+                    <Label>Rechercher par N° BR</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="text"
+                        placeholder="Ex: BR00001"
+                        value={searchBREnCours}
+                        onChange={(e) => setSearchBREnCours(e.target.value)}
+                        className="w-[200px] pl-9"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Filtrer par client</Label>
+                    <Select value={filterClientEnCours} onValueChange={setFilterClientEnCours}>
+                      <SelectTrigger className="w-[220px]">
+                        <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                        <SelectValue placeholder="Tous les clients" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les clients</SelectItem>
+                        {clientsWithOpenBRs.map(client => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {(searchBREnCours || filterClientEnCours !== 'all') && (
+                    <Button variant="outline" onClick={resetFiltersEnCours}>
+                      Réinitialiser
+                    </Button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
+                  <Scale className="h-5 w-5 text-primary" />
+                  <span className="text-sm font-medium">Total en cours:</span>
+                  <span className="text-lg font-bold text-primary">{totalPoidsEnCours.toLocaleString()} kg</span>
+                  <span className="text-sm text-muted-foreground">({filteredOpenBRs.length} BR)</span>
+                </div>
               </div>
-              {searchBREnCours && (
-                <Button variant="ghost" size="sm" onClick={() => setSearchBREnCours('')}>
-                  Réinitialiser
-                </Button>
-              )}
-            </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
-              <Scale className="h-5 w-5 text-primary" />
-              <span className="text-sm font-medium">Total en cours:</span>
-              <span className="text-lg font-bold text-primary">{totalPoidsEnCours.toLocaleString()} kg</span>
-              <span className="text-sm text-muted-foreground">({filteredOpenBRs.length} BR)</span>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
 
-          {filteredOpenBRs.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-4">
-                <Factory className="h-10 w-10 text-muted-foreground" />
-              </div>
-              <h3 className="font-serif text-xl font-semibold mb-2">
-                {searchBREnCours ? 'Aucun BR trouvé' : 'Aucun BR en attente'}
-              </h3>
-              <p className="text-muted-foreground text-center max-w-md">
-                {searchBREnCours 
-                  ? 'Aucun BR ne correspond à votre recherche.'
-                  : 'Tous les bons de réception ont été traités. Créez de nouveaux BR pour continuer la trituration.'
+          {/* Tableau des BR en cours */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="font-serif">Bons de réception en attente de trituration</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DataTable
+                columns={columnsEnCours}
+                data={filteredOpenBRs}
+                emptyMessage={
+                  searchBREnCours || filterClientEnCours !== 'all'
+                    ? 'Aucun BR ne correspond à vos critères de recherche.'
+                    : 'Aucun BR en attente de trituration.'
                 }
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {filteredOpenBRs.map((br) => {
-                const client = getClient(br.clientId);
-                return (
-                  <Card 
-                    key={br.id} 
-                    className="cursor-pointer transition-all duration-200 hover:shadow-medium hover:-translate-y-1"
-                    onClick={() => setSelectedBR(br)}
-                  >
-                    <CardHeader className="pb-2">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="font-serif text-lg">{br.number}</CardTitle>
-                        <StatusBadge status="open" />
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          <Scale className="h-4 w-4" />
-                          <span className="font-medium text-foreground">{br.poidsNet.toLocaleString()} kg</span>
-                          <span>d'olives</span>
-                        </div>
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">Client: </span>
-                          <span className="font-medium">{client?.name}</span>
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          Reçu le {format(new Date(br.date), 'dd MMM yyyy', { locale: fr })}
-                        </div>
-                        <Button className="w-full mt-2" variant="outline">
-                          <Droplets className="mr-2 h-4 w-4" />
-                          Triturer
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                );
-              })}
-            </div>
-          )}
+              />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Onglet Historique */}
