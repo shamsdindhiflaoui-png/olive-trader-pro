@@ -5,18 +5,17 @@ import { fr } from 'date-fns/locale';
 
 // Register fonts
 Font.register({
-  family: 'Open Sans',
+  family: 'Amiri',
   fonts: [
-    { src: 'https://cdn.jsdelivr.net/npm/open-sans-all@0.1.3/fonts/open-sans-regular.ttf' },
-    { src: 'https://cdn.jsdelivr.net/npm/open-sans-all@0.1.3/fonts/open-sans-600.ttf', fontWeight: 600 },
-    { src: 'https://cdn.jsdelivr.net/npm/open-sans-all@0.1.3/fonts/open-sans-700.ttf', fontWeight: 700 },
+    { src: 'https://fonts.gstatic.com/s/amiri/v27/J7aRnpd8CGxBHqUpvrIw74NL.ttf', fontWeight: 'normal' },
+    { src: 'https://fonts.gstatic.com/s/amiri/v27/J7acnpd8CGxBHp2VkZY4xJ9CGyAa.ttf', fontWeight: 'bold' },
   ],
 });
 
 const styles = StyleSheet.create({
   page: {
     padding: 40,
-    fontFamily: 'Open Sans',
+    fontFamily: 'Amiri',
     fontSize: 10,
     color: '#1a1a1a',
   },
