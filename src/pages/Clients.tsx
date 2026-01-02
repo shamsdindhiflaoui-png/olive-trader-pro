@@ -26,14 +26,14 @@ import { Plus, Pencil, Trash2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { ClientFicheDialog } from '@/components/clients/ClientFicheDialog';
 
-const transactionTypeLabels: Record<TransactionType, string> = {
+const clientTypeLabels: Record<TransactionType, string> = {
   facon: 'Façon (Service)',
   bawaza: 'Bawaza',
   achat_base: 'Achat à la base',
 };
 
 const Clients = () => {
-  const { clients, addClient, updateClient, deleteClient } = useAppStore();
+  const { clients, clientOperations, bonsReception, addClient, updateClient, deleteClient } = useAppStore();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [ficheClient, setFicheClient] = useState<Client | null>(null);
@@ -92,6 +92,18 @@ const Clients = () => {
     }
   };
 
+  // Calculate client totals
+  const getClientTotals = (clientId: string) => {
+    const ops = clientOperations.filter(op => op.clientId === clientId);
+    const brs = bonsReception.filter(br => br.clientId === clientId);
+    
+    const capitalDT = ops.filter(op => op.type === 'capital_fdr').reduce((sum, op) => sum + (op.montantDT || 0), 0);
+    const avanceDT = ops.filter(op => op.type === 'avance').reduce((sum, op) => sum + (op.montantDT || 0), 0);
+    const brKg = brs.reduce((sum, br) => sum + br.poidsNet, 0);
+    
+    return { capitalDT, avanceDT, brKg };
+  };
+
   const columns = [
     { 
       key: 'code', 
@@ -103,29 +115,50 @@ const Clients = () => {
     { key: 'name', header: 'Nom / Raison sociale' },
     { 
       key: 'transactionType', 
-      header: 'Type de transaction',
+      header: 'Type Client',
       render: (client: Client) => (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
-          {transactionTypeLabels[client.transactionType]}
+          {clientTypeLabels[client.transactionType]}
         </span>
       )
     },
-    { key: 'phone', header: 'Téléphone', render: (client: Client) => client.phone || '-' },
+    { 
+      key: 'capitalDT', 
+      header: 'Capital (DT)',
+      render: (client: Client) => {
+        const { capitalDT } = getClientTotals(client.id);
+        return capitalDT > 0 ? <span className="font-medium">{capitalDT.toFixed(2)}</span> : '-';
+      }
+    },
+    { 
+      key: 'avanceDT', 
+      header: 'Avance (DT)',
+      render: (client: Client) => {
+        const { avanceDT } = getClientTotals(client.id);
+        return avanceDT > 0 ? <span className="font-medium">{avanceDT.toFixed(2)}</span> : '-';
+      }
+    },
+    { 
+      key: 'brKg', 
+      header: 'BR (kg)',
+      render: (client: Client) => {
+        const { brKg } = getClientTotals(client.id);
+        return brKg > 0 ? <span className="font-medium">{brKg.toLocaleString()}</span> : '-';
+      }
+    },
     { 
       key: 'actions', 
       header: 'Actions',
       render: (client: Client) => (
         <div className="flex items-center gap-2">
-          {client.transactionType === 'bawaza' && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={(e) => { e.stopPropagation(); setFicheClient(client); }}
-              title="Voir la fiche"
-            >
-              <FileText className="h-4 w-4" />
-            </Button>
-          )}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={(e) => { e.stopPropagation(); setFicheClient(client); }}
+            title="Voir la fiche"
+          >
+            <FileText className="h-4 w-4" />
+          </Button>
           <Button 
             variant="ghost" 
             size="sm" 
@@ -177,7 +210,7 @@ const Clients = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="transactionType">Type de transaction *</Label>
+                  <Label htmlFor="transactionType">Type Client *</Label>
                   <Select
                     value={formData.transactionType}
                     onValueChange={(value: TransactionType) => 
@@ -236,7 +269,7 @@ const Clients = () => {
         emptyMessage="Aucun client enregistré. Cliquez sur 'Nouveau Client' pour commencer."
       />
 
-      {/* Client Fiche Dialog for Bawaza clients */}
+      {/* Client Fiche Dialog for all clients */}
       {ficheClient && (
         <ClientFicheDialog
           client={ficheClient}
