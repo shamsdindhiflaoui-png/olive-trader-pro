@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Client, BonReception, Trituration, Reservoir, Payment, Settings, StockAffectation, StockMovement, BonLivraison } from '@/types';
+import { Client, BonReception, Trituration, Reservoir, Payment, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment } from '@/types';
 
 interface AppState {
   clients: Client[];
@@ -11,6 +11,8 @@ interface AppState {
   stockAffectations: StockAffectation[];
   stockMovements: StockMovement[];
   bonsLivraison: BonLivraison[];
+  invoices: Invoice[];
+  invoicePayments: InvoicePayment[];
   settings: Settings;
   
   // Client actions
@@ -38,6 +40,10 @@ interface AppState {
   // Payment actions
   addPayment: (payment: Omit<Payment, 'id' | 'createdAt'>) => void;
   
+  // Invoice actions
+  addInvoice: (invoice: { clientId: string; date: Date; echeance: Date; lignes: Omit<InvoiceLine, 'id'>[]; tauxTVA: number; droitTimbre: number; observations?: string }) => Invoice;
+  addInvoicePayment: (payment: { invoiceId: string; montant: number; modePayment: string; date: Date; reference?: string; observations?: string }) => boolean;
+  
   // Settings actions
   updateSettings: (settings: Partial<Settings>) => void;
 }
@@ -56,6 +62,8 @@ export const useAppStore = create<AppState>()(
       stockAffectations: [],
       stockMovements: [],
       bonsLivraison: [],
+      invoices: [],
+      invoicePayments: [],
       settings: {
         companyName: 'Huilerie Moderne',
         defaultPrixFacon: 0.5,
@@ -295,6 +303,74 @@ export const useAppStore = create<AppState>()(
           createdAt: new Date(),
         }]
       })),
+      
+      // Invoice actions
+      addInvoice: (invoiceData) => {
+        const state = get();
+        const lignesWithId = invoiceData.lignes.map(l => ({
+          ...l,
+          id: generateId(),
+        }));
+        const montantHT = lignesWithId.reduce((sum, l) => sum + l.montant, 0);
+        const montantTVA = montantHT * (invoiceData.tauxTVA / 100);
+        const montantTTC = montantHT + montantTVA + invoiceData.droitTimbre;
+        
+        const invoice: Invoice = {
+          id: generateId(),
+          number: generateCode('FAC', state.invoices.length),
+          date: invoiceData.date,
+          echeance: invoiceData.echeance,
+          clientId: invoiceData.clientId,
+          lignes: lignesWithId,
+          montantHT,
+          tauxTVA: invoiceData.tauxTVA,
+          montantTVA,
+          droitTimbre: invoiceData.droitTimbre,
+          montantTTC,
+          montantPaye: 0,
+          resteAPayer: montantTTC,
+          status: 'en_attente',
+          observations: invoiceData.observations,
+          createdAt: new Date(),
+        };
+        
+        set((state) => ({
+          invoices: [...state.invoices, invoice],
+        }));
+        
+        return invoice;
+      },
+      
+      addInvoicePayment: (paymentData) => {
+        const state = get();
+        const invoice = state.invoices.find(i => i.id === paymentData.invoiceId);
+        if (!invoice) return false;
+        if (paymentData.montant > invoice.resteAPayer) return false;
+        
+        const newMontantPaye = invoice.montantPaye + paymentData.montant;
+        const newResteAPayer = invoice.montantTTC - newMontantPaye;
+        const newStatus = newResteAPayer <= 0 ? 'paye' : 'partiellement_paye';
+        
+        set((state) => ({
+          invoices: state.invoices.map(i => 
+            i.id === paymentData.invoiceId 
+              ? { ...i, montantPaye: newMontantPaye, resteAPayer: newResteAPayer, status: newStatus }
+              : i
+          ),
+          invoicePayments: [...state.invoicePayments, {
+            id: generateId(),
+            invoiceId: paymentData.invoiceId,
+            montant: paymentData.montant,
+            modePayment: paymentData.modePayment,
+            date: paymentData.date,
+            reference: paymentData.reference,
+            observations: paymentData.observations,
+            createdAt: new Date(),
+          }]
+        }));
+        
+        return true;
+      },
       
       // Settings actions
       updateSettings: (settingsData) => set((state) => ({

@@ -114,3 +114,44 @@ export interface Settings {
   defaultPrixBase: number;
   partHuilerieBawaza: number; // percentage
 }
+
+export type InvoiceStatus = 'en_attente' | 'partiellement_paye' | 'paye';
+
+export interface InvoiceLine {
+  id: string;
+  description: string;
+  quantite: number;
+  prixUnitaire: number;
+  montant: number;
+}
+
+export interface Invoice {
+  id: string;
+  number: string;
+  date: Date;
+  echeance: Date;
+  clientId: string;
+  client?: Client;
+  lignes: InvoiceLine[];
+  montantHT: number;
+  tauxTVA: number;
+  montantTVA: number;
+  droitTimbre: number;
+  montantTTC: number;
+  montantPaye: number;
+  resteAPayer: number;
+  status: InvoiceStatus;
+  observations?: string;
+  createdAt: Date;
+}
+
+export interface InvoicePayment {
+  id: string;
+  invoiceId: string;
+  montant: number;
+  modePayment: string;
+  date: Date;
+  reference?: string;
+  observations?: string;
+  createdAt: Date;
+}

@@ -18,6 +18,7 @@ const navItems = [
   { path: '/trituration', label: 'Trituration', icon: Factory },
   { path: '/stock', label: 'Stock', icon: Database },
   { path: '/paiements', label: 'Paiements', icon: CreditCard },
+  { path: '/factures', label: 'Factures', icon: FileText },
   { path: '/parametres', label: 'Paramètres', icon: Settings },
 ];
 

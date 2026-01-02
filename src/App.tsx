@@ -9,6 +9,7 @@ import BonsReception from "./pages/BonsReception";
 import Trituration from "./pages/Trituration";
 import Stock from "./pages/Stock";
 import Paiements from "./pages/Paiements";
+import Factures from "./pages/Factures";
 import Parametres from "./pages/Parametres";
 import NotFound from "./pages/NotFound";
 
@@ -27,6 +28,7 @@ const App = () => (
           <Route path="/trituration" element={<Trituration />} />
           <Route path="/stock" element={<Stock />} />
           <Route path="/paiements" element={<Paiements />} />
+          <Route path="/factures" element={<Factures />} />
           <Route path="/parametres" element={<Parametres />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
