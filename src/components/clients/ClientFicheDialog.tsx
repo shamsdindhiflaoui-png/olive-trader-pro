@@ -58,11 +58,13 @@ interface TableRow {
   capitalDT?: number;
   avanceDT?: number;
   brKg?: number;
+  huileL?: number;
+  isPaid?: boolean;
   reference?: string;
 }
 
 export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDialogProps) {
-  const { clientOperations, bonsReception, addClientOperation, deleteClientOperation } = useAppStore();
+  const { clientOperations, bonsReception, triturations, invoices, addClientOperation, deleteClientOperation } = useAppStore();
   const [showAddForm, setShowAddForm] = useState(false);
   const [newOperation, setNewOperation] = useState({
     type: 'capital_fdr' as ClientOperationType,
@@ -84,6 +86,16 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
     [bonsReception, client.id]
   );
 
+  // Get trituration data for BRs (huile quantity)
+  const getTriturationForBR = (brId: string) => {
+    return triturations.find(t => t.brId === brId);
+  };
+
+  // Get invoice status for BR
+  const getInvoiceForBR = (brId: string) => {
+    return invoices.find(inv => inv.source === 'br' && inv.sourceId === brId);
+  };
+
   // Combine all data into table rows
   const tableRows = useMemo(() => {
     const rows: TableRow[] = [];
@@ -104,6 +116,10 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
 
     // Add BRs
     clientBRs.forEach(br => {
+      const trituration = getTriturationForBR(br.id);
+      const invoice = getInvoiceForBR(br.id);
+      const isPaid = invoice?.status === 'paye';
+      
       rows.push({
         id: `br-${br.id}`,
         date: new Date(br.date),
@@ -112,6 +128,8 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
         capitalDT: undefined,
         avanceDT: undefined,
         brKg: br.poidsNet,
+        huileL: trituration?.quantiteHuile || 0,
+        isPaid: isPaid,
         reference: br.number,
       });
     });
@@ -127,8 +145,11 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
         capitalDT: acc.capitalDT + (row.capitalDT || 0),
         avanceDT: acc.avanceDT + (row.avanceDT || 0),
         brKg: acc.brKg + (row.brKg || 0),
+        huileL: acc.huileL + (row.huileL || 0),
+        paidKg: acc.paidKg + (row.isPaid ? (row.brKg || 0) : 0),
+        unpaidKg: acc.unpaidKg + (!row.isPaid && row.brKg ? (row.brKg || 0) : 0),
       }),
-      { capitalDT: 0, avanceDT: 0, brKg: 0 }
+      { capitalDT: 0, avanceDT: 0, brKg: 0, huileL: 0, paidKg: 0, unpaidKg: 0 }
     );
   }, [tableRows]);
 
@@ -290,16 +311,18 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
                 <TableRow className="bg-muted/50">
                   <TableHead className="w-[100px]">Date</TableHead>
                   <TableHead>Libellé</TableHead>
-                  <TableHead className="text-right w-[120px]">Capital (DT)</TableHead>
-                  <TableHead className="text-right w-[120px]">Avance (DT)</TableHead>
-                  <TableHead className="text-right w-[120px]">BR (kg)</TableHead>
-                  <TableHead className="w-[60px]"></TableHead>
+                  <TableHead className="text-right w-[100px]">Capital (DT)</TableHead>
+                  <TableHead className="text-right w-[100px]">Avance (DT)</TableHead>
+                  <TableHead className="text-right w-[100px]">BR (kg)</TableHead>
+                  <TableHead className="text-right w-[100px]">Huile (L)</TableHead>
+                  <TableHead className="text-center w-[90px]">État</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {tableRows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                       Aucune opération enregistrée
                     </TableCell>
                   </TableRow>
@@ -322,6 +345,20 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
                       </TableCell>
                       <TableCell className="text-right font-medium text-primary">
                         {row.brKg !== undefined ? `${row.brKg.toLocaleString()}` : '-'}
+                      </TableCell>
+                      <TableCell className="text-right font-medium">
+                        {row.huileL !== undefined && row.type === 'br' ? `${row.huileL.toFixed(1)}` : '-'}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {row.type === 'br' ? (
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            row.isPaid 
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
+                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          }`}>
+                            {row.isPaid ? 'Payé' : 'Non payé'}
+                          </span>
+                        ) : '-'}
                       </TableCell>
                       <TableCell>
                         {!row.id.startsWith('br-') && (
@@ -353,7 +390,29 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
                   <TableCell className="text-right text-lg text-primary">
                     {totals.brKg.toLocaleString()} kg
                   </TableCell>
+                  <TableCell className="text-right text-lg">
+                    {totals.huileL.toFixed(1)} L
+                  </TableCell>
                   <TableCell></TableCell>
+                  <TableCell></TableCell>
+                </TableRow>
+                <TableRow className="bg-green-50 dark:bg-green-900/20">
+                  <TableCell colSpan={4} className="text-right font-medium text-green-700 dark:text-green-400">
+                    Total Payé
+                  </TableCell>
+                  <TableCell className="text-right font-bold text-green-700 dark:text-green-400">
+                    {totals.paidKg.toLocaleString()} kg
+                  </TableCell>
+                  <TableCell colSpan={3}></TableCell>
+                </TableRow>
+                <TableRow className="bg-red-50 dark:bg-red-900/20">
+                  <TableCell colSpan={4} className="text-right font-medium text-red-700 dark:text-red-400">
+                    Total Non Payé
+                  </TableCell>
+                  <TableCell className="text-right font-bold text-red-700 dark:text-red-400">
+                    {totals.unpaidKg.toLocaleString()} kg
+                  </TableCell>
+                  <TableCell colSpan={3}></TableCell>
                 </TableRow>
               </TableFooter>
             </Table>
