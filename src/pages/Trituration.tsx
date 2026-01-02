@@ -37,8 +37,26 @@ const Trituration = () => {
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
   const [searchBR, setSearchBR] = useState('');
+  const [searchBREnCours, setSearchBREnCours] = useState('');
 
   const openBRs = bonsReception.filter(br => br.status === 'open');
+  
+  // Filtrer et trier les BR en cours
+  const filteredOpenBRs = useMemo(() => {
+    let result = openBRs;
+    
+    if (searchBREnCours.trim()) {
+      result = result.filter(br => br.number.toLowerCase().includes(searchBREnCours.toLowerCase()));
+    }
+    
+    // Trier par date chronologique (plus ancien en premier)
+    return [...result].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [openBRs, searchBREnCours]);
+  
+  // Somme des quantités en cours
+  const totalPoidsEnCours = useMemo(() => {
+    return filteredOpenBRs.reduce((sum, br) => sum + br.poidsNet, 0);
+  }, [filteredOpenBRs]);
 
   const resetForm = () => {
     setFormData({
@@ -192,20 +210,52 @@ const Trituration = () => {
         </TabsList>
 
         {/* Onglet BR en attente */}
-        <TabsContent value="en-cours">
-          {openBRs.length === 0 ? (
+        <TabsContent value="en-cours" className="space-y-6">
+          {/* Somme et recherche */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Rechercher par N° BR"
+                  value={searchBREnCours}
+                  onChange={(e) => setSearchBREnCours(e.target.value)}
+                  className="w-[220px] pl-9"
+                />
+              </div>
+              {searchBREnCours && (
+                <Button variant="ghost" size="sm" onClick={() => setSearchBREnCours('')}>
+                  Réinitialiser
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
+              <Scale className="h-5 w-5 text-primary" />
+              <span className="text-sm font-medium">Total en cours:</span>
+              <span className="text-lg font-bold text-primary">{totalPoidsEnCours.toLocaleString()} kg</span>
+              <span className="text-sm text-muted-foreground">({filteredOpenBRs.length} BR)</span>
+            </div>
+          </div>
+
+          {filteredOpenBRs.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16">
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-4">
                 <Factory className="h-10 w-10 text-muted-foreground" />
               </div>
-              <h3 className="font-serif text-xl font-semibold mb-2">Aucun BR en attente</h3>
+              <h3 className="font-serif text-xl font-semibold mb-2">
+                {searchBREnCours ? 'Aucun BR trouvé' : 'Aucun BR en attente'}
+              </h3>
               <p className="text-muted-foreground text-center max-w-md">
-                Tous les bons de réception ont été traités. Créez de nouveaux BR pour continuer la trituration.
+                {searchBREnCours 
+                  ? 'Aucun BR ne correspond à votre recherche.'
+                  : 'Tous les bons de réception ont été traités. Créez de nouveaux BR pour continuer la trituration.'
+                }
               </p>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-              {openBRs.map((br) => {
+              {filteredOpenBRs.map((br) => {
                 const client = getClient(br.clientId);
                 return (
                   <Card 
