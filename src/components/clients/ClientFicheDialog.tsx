@@ -418,19 +418,27 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
             </Table>
           </div>
 
-          {/* Summary Cards */}
-          <div className="grid grid-cols-3 gap-4">
-            <div className="p-4 bg-secondary/20 rounded-lg text-center">
-              <p className="text-sm text-muted-foreground">Total Capital FDR</p>
-              <p className="text-2xl font-bold text-secondary-foreground">{totals.capitalDT.toFixed(3)} DT</p>
+          {/* Summary Cards - Compact single line */}
+          <div className="flex flex-wrap gap-2 justify-between">
+            <div className="flex items-center gap-2 px-3 py-2 bg-secondary/20 rounded-lg">
+              <span className="text-xs text-muted-foreground">Capital FDR:</span>
+              <span className="font-semibold text-sm">{totals.capitalDT.toFixed(3)} DT</span>
             </div>
-            <div className="p-4 bg-primary/10 rounded-lg text-center">
-              <p className="text-sm text-muted-foreground">Total Avances</p>
-              <p className="text-2xl font-bold text-primary">{totals.avanceDT.toFixed(3)} DT</p>
+            <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
+              <span className="text-xs text-muted-foreground">Avances:</span>
+              <span className="font-semibold text-sm text-primary">{totals.avanceDT.toFixed(3)} DT</span>
             </div>
-            <div className="p-4 bg-accent/20 rounded-lg text-center">
-              <p className="text-sm text-muted-foreground">Total Olives Reçues</p>
-              <p className="text-2xl font-bold text-accent-foreground">{totals.brKg.toLocaleString()} kg</p>
+            <div className="flex items-center gap-2 px-3 py-2 bg-accent/20 rounded-lg">
+              <span className="text-xs text-muted-foreground">Olives:</span>
+              <span className="font-semibold text-sm">{totals.brKg.toLocaleString()} kg</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+              <span className="text-xs text-green-700 dark:text-green-400">Payé:</span>
+              <span className="font-semibold text-sm text-green-700 dark:text-green-400">{totals.paidKg.toLocaleString()} kg</span>
+            </div>
+            <div className="flex items-center gap-2 px-3 py-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
+              <span className="text-xs text-red-700 dark:text-red-400">Non payé:</span>
+              <span className="font-semibold text-sm text-red-700 dark:text-red-400">{totals.unpaidKg.toLocaleString()} kg</span>
             </div>
           </div>
         </div>
