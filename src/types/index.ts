@@ -88,21 +88,7 @@ export interface BonLivraison {
   montantHT: number;
   montantTVA: number;
   montantTTC: number;
-  createdAt: Date;
-}
-
-export type PaymentStatus = 'non_paye' | 'paye';
-
-export interface Payment {
-  id: string;
-  brId: string;
-  br?: BonReception;
-  trituration?: Trituration;
-  montant: number;
-  prixUnitaire: number;
-  modePayment: string;
-  date: Date;
-  status: PaymentStatus;
+  invoiced?: boolean; // Track if BL has been invoiced
   createdAt: Date;
 }
 
@@ -116,6 +102,7 @@ export interface Settings {
 }
 
 export type InvoiceStatus = 'en_attente' | 'partiellement_paye' | 'paye';
+export type InvoiceSource = 'br' | 'bl'; // Source: BR (Façon) or BL (Vente stock)
 
 export interface InvoiceLine {
   id: string;
@@ -132,6 +119,9 @@ export interface Invoice {
   echeance: Date;
   clientId: string;
   client?: Client;
+  source: InvoiceSource;
+  sourceId: string; // BR id or BL id
+  sourceNumber?: string; // BR number or BL number for display
   lignes: InvoiceLine[];
   montantHT: number;
   tauxTVA: number;

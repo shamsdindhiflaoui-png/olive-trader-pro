@@ -13,7 +13,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog';
 import {
   Select,
@@ -29,8 +28,8 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { useAppStore } from '@/store/appStore';
-import { Invoice, InvoicePayment, InvoiceLine } from '@/types';
-import { Plus, FileText, CreditCard, Clock, CheckCircle, AlertCircle, Trash2, Download, Eye } from 'lucide-react';
+import { Invoice, BonReception, BonLivraison } from '@/types';
+import { Plus, FileText, CreditCard, Clock, CheckCircle, AlertCircle, Download, Eye, Receipt, ShoppingCart } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isWithinInterval, startOfDay, endOfDay, addDays } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -52,34 +51,44 @@ const statusColors = {
 const Factures = () => {
   const { 
     clients, 
+    bonsReception,
+    triturations,
+    bonsLivraison,
     invoices,
     invoicePayments,
     settings,
-    addInvoice,
+    addInvoiceFromBR,
+    addInvoiceFromBL,
     addInvoicePayment,
   } = useAppStore();
   
-  const [isInvoiceDialogOpen, setIsInvoiceDialogOpen] = useState(false);
+  const [isInvoiceBRDialogOpen, setIsInvoiceBRDialogOpen] = useState(false);
+  const [isInvoiceBLDialogOpen, setIsInvoiceBLDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [selectedBR, setSelectedBR] = useState<BonReception | null>(null);
+  const [selectedBL, setSelectedBL] = useState<BonLivraison | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterClient, setFilterClient] = useState<string>('all');
+  const [filterSource, setFilterSource] = useState<string>('all');
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
   
-  const [invoiceForm, setInvoiceForm] = useState({
-    clientId: '',
+  const [brInvoiceForm, setBrInvoiceForm] = useState({
     date: format(new Date(), 'yyyy-MM-dd'),
     echeance: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
+    prixUnitaire: settings.defaultPrixFacon.toString(),
     tauxTVA: '19',
     droitTimbre: '1',
     observations: '',
   });
   
-  const [lignes, setLignes] = useState<{ description: string; quantite: string; prixUnitaire: string }[]>([
-    { description: '', quantite: '', prixUnitaire: '' }
-  ]);
+  const [blInvoiceForm, setBlInvoiceForm] = useState({
+    date: format(new Date(), 'yyyy-MM-dd'),
+    echeance: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
+    observations: '',
+  });
   
   const [paymentForm, setPaymentForm] = useState({
     montant: '',
@@ -88,6 +97,22 @@ const Factures = () => {
     reference: '',
     observations: '',
   });
+
+  // Get BR Façon that are closed and not invoiced
+  const pendingBRs = useMemo(() => {
+    return bonsReception.filter(br => {
+      if (br.status !== 'closed') return false;
+      const client = clients.find(c => c.id === br.clientId);
+      if (!client || client.transactionType !== 'facon') return false;
+      const existingInvoice = invoices.find(i => i.source === 'br' && i.sourceId === br.id);
+      return !existingInvoice;
+    });
+  }, [bonsReception, clients, invoices]);
+
+  // Get BL not invoiced
+  const pendingBLs = useMemo(() => {
+    return bonsLivraison.filter(bl => !bl.invoiced);
+  }, [bonsLivraison]);
 
   // Filter invoices
   const filteredInvoices = useMemo(() => {
@@ -101,6 +126,10 @@ const Factures = () => {
       filtered = filtered.filter(i => i.clientId === filterClient);
     }
     
+    if (filterSource !== 'all') {
+      filtered = filtered.filter(i => i.source === filterSource);
+    }
+    
     if (dateDebut && dateFin) {
       filtered = filtered.filter(i => {
         const invoiceDate = new Date(i.date);
@@ -112,7 +141,7 @@ const Factures = () => {
     }
     
     return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [invoices, filterStatus, filterClient, dateDebut, dateFin]);
+  }, [invoices, filterStatus, filterClient, filterSource, dateDebut, dateFin]);
 
   // Statistics
   const stats = useMemo(() => {
@@ -124,63 +153,68 @@ const Factures = () => {
     return { total, paye, enAttente, enRetard };
   }, [invoices]);
 
-  const addLigne = () => {
-    setLignes([...lignes, { description: '', quantite: '', prixUnitaire: '' }]);
-  };
-
-  const removeLigne = (index: number) => {
-    if (lignes.length > 1) {
-      setLignes(lignes.filter((_, i) => i !== index));
-    }
-  };
-
-  const updateLigne = (index: number, field: string, value: string) => {
-    setLignes(lignes.map((l, i) => i === index ? { ...l, [field]: value } : l));
-  };
-
-  const calculateTotal = () => {
-    const ht = lignes.reduce((sum, l) => {
-      const qty = Number(l.quantite) || 0;
-      const price = Number(l.prixUnitaire) || 0;
-      return sum + (qty * price);
-    }, 0);
-    const tva = ht * (Number(invoiceForm.tauxTVA) / 100);
-    const ttc = ht + tva + Number(invoiceForm.droitTimbre);
-    return { ht, tva, ttc };
-  };
-
-  const handleCreateInvoice = (e: React.FormEvent) => {
+  const handleCreateInvoiceFromBR = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!invoiceForm.clientId) {
-      toast.error('Veuillez sélectionner un client');
-      return;
-    }
-    
-    const validLignes = lignes.filter(l => l.description && l.quantite && l.prixUnitaire);
-    if (validLignes.length === 0) {
-      toast.error('Veuillez ajouter au moins une ligne');
+    if (!selectedBR) {
+      toast.error('Veuillez sélectionner un BR');
       return;
     }
 
-    const invoice = addInvoice({
-      clientId: invoiceForm.clientId,
-      date: new Date(invoiceForm.date),
-      echeance: new Date(invoiceForm.echeance),
-      lignes: validLignes.map(l => ({
-        description: l.description,
-        quantite: Number(l.quantite),
-        prixUnitaire: Number(l.prixUnitaire),
-        montant: Number(l.quantite) * Number(l.prixUnitaire),
-      })),
-      tauxTVA: Number(invoiceForm.tauxTVA),
-      droitTimbre: Number(invoiceForm.droitTimbre),
-      observations: invoiceForm.observations || undefined,
+    const invoice = addInvoiceFromBR({
+      brId: selectedBR.id,
+      date: new Date(brInvoiceForm.date),
+      echeance: new Date(brInvoiceForm.echeance),
+      prixUnitaire: Number(brInvoiceForm.prixUnitaire),
+      tauxTVA: Number(brInvoiceForm.tauxTVA),
+      droitTimbre: Number(brInvoiceForm.droitTimbre),
+      observations: brInvoiceForm.observations || undefined,
     });
 
-    toast.success(`Facture ${invoice.number} créée avec succès`);
-    setIsInvoiceDialogOpen(false);
-    resetInvoiceForm();
+    if (invoice) {
+      toast.success(`Facture ${invoice.number} créée avec succès`);
+      setIsInvoiceBRDialogOpen(false);
+      setSelectedBR(null);
+      setBrInvoiceForm({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        echeance: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
+        prixUnitaire: settings.defaultPrixFacon.toString(),
+        tauxTVA: '19',
+        droitTimbre: '1',
+        observations: '',
+      });
+    } else {
+      toast.error('Erreur lors de la création de la facture');
+    }
+  };
+
+  const handleCreateInvoiceFromBL = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedBL) {
+      toast.error('Veuillez sélectionner un BL');
+      return;
+    }
+
+    const invoice = addInvoiceFromBL({
+      blId: selectedBL.id,
+      date: new Date(blInvoiceForm.date),
+      echeance: new Date(blInvoiceForm.echeance),
+      observations: blInvoiceForm.observations || undefined,
+    });
+
+    if (invoice) {
+      toast.success(`Facture ${invoice.number} créée avec succès`);
+      setIsInvoiceBLDialogOpen(false);
+      setSelectedBL(null);
+      setBlInvoiceForm({
+        date: format(new Date(), 'yyyy-MM-dd'),
+        echeance: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
+        observations: '',
+      });
+    } else {
+      toast.error('Erreur lors de la création de la facture');
+    }
   };
 
   const handleAddPayment = (e: React.FormEvent) => {
@@ -215,18 +249,6 @@ const Factures = () => {
     }
   };
 
-  const resetInvoiceForm = () => {
-    setInvoiceForm({
-      clientId: '',
-      date: format(new Date(), 'yyyy-MM-dd'),
-      echeance: format(addDays(new Date(), 30), 'yyyy-MM-dd'),
-      tauxTVA: '19',
-      droitTimbre: '1',
-      observations: '',
-    });
-    setLignes([{ description: '', quantite: '', prixUnitaire: '' }]);
-  };
-
   const openPaymentDialog = (invoice: Invoice) => {
     setSelectedInvoice(invoice);
     setPaymentForm({ ...paymentForm, montant: invoice.resteAPayer.toString() });
@@ -238,8 +260,30 @@ const Factures = () => {
     setIsDetailDialogOpen(true);
   };
 
+  const openBRInvoiceDialog = (br: BonReception) => {
+    setSelectedBR(br);
+    setBrInvoiceForm({
+      ...brInvoiceForm,
+      prixUnitaire: settings.defaultPrixFacon.toString(),
+    });
+    setIsInvoiceBRDialogOpen(true);
+  };
+
+  const openBLInvoiceDialog = (bl: BonLivraison) => {
+    setSelectedBL(bl);
+    setIsInvoiceBLDialogOpen(true);
+  };
+
   const getInvoicePayments = (invoiceId: string) => {
     return invoicePayments.filter(p => p.invoiceId === invoiceId);
+  };
+
+  const calculateBRTotal = () => {
+    if (!selectedBR) return { ht: 0, tva: 0, ttc: 0 };
+    const ht = selectedBR.poidsNet * Number(brInvoiceForm.prixUnitaire);
+    const tva = ht * (Number(brInvoiceForm.tauxTVA) / 100);
+    const ttc = ht + tva + Number(brInvoiceForm.droitTimbre);
+    return { ht, tva, ttc };
   };
 
   const invoiceColumns = [
@@ -252,6 +296,20 @@ const Factures = () => {
       key: 'date',
       header: 'Date',
       render: (i: Invoice) => format(new Date(i.date), 'dd/MM/yyyy', { locale: fr }),
+    },
+    {
+      key: 'source',
+      header: 'Source',
+      render: (i: Invoice) => (
+        <span className={`px-2 py-1 rounded-full text-xs font-medium ${i.source === 'br' ? 'bg-primary/10 text-primary' : 'bg-info/10 text-info'}`}>
+          {i.source === 'br' ? 'Service (BR)' : 'Vente (BL)'}
+        </span>
+      ),
+    },
+    {
+      key: 'sourceNumber',
+      header: 'Réf. Source',
+      render: (i: Invoice) => i.sourceNumber || '-',
     },
     {
       key: 'client',
@@ -267,11 +325,6 @@ const Factures = () => {
       render: (i: Invoice) => <span className="font-semibold">{i.montantTTC.toFixed(3)} DT</span>,
     },
     {
-      key: 'paye',
-      header: 'Payé',
-      render: (i: Invoice) => <span className="text-success">{i.montantPaye.toFixed(3)} DT</span>,
-    },
-    {
       key: 'reste',
       header: 'Reste',
       render: (i: Invoice) => (
@@ -279,18 +332,6 @@ const Factures = () => {
           {i.resteAPayer.toFixed(3)} DT
         </span>
       ),
-    },
-    {
-      key: 'echeance',
-      header: 'Échéance',
-      render: (i: Invoice) => {
-        const isOverdue = i.status !== 'paye' && new Date(i.echeance) < new Date();
-        return (
-          <span className={isOverdue ? 'text-destructive font-medium' : ''}>
-            {format(new Date(i.echeance), 'dd/MM/yyyy', { locale: fr })}
-          </span>
-        );
-      },
     },
     {
       key: 'status',
@@ -334,161 +375,13 @@ const Factures = () => {
     },
   ];
 
-  const totals = calculateTotal();
+  const brTotals = calculateBRTotal();
 
   return (
     <MainLayout>
       <PageHeader 
         title="Gestion des Factures" 
-        description="Créez et suivez les factures clients"
-        action={
-          <Dialog open={isInvoiceDialogOpen} onOpenChange={setIsInvoiceDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                Nouvelle Facture
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle className="font-serif">Créer une facture</DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleCreateInvoice} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2 col-span-2">
-                    <Label>Client *</Label>
-                    <Select
-                      value={invoiceForm.clientId}
-                      onValueChange={(value) => setInvoiceForm({ ...invoiceForm, clientId: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner un client..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {clients.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Date *</Label>
-                    <Input
-                      type="date"
-                      value={invoiceForm.date}
-                      onChange={(e) => setInvoiceForm({ ...invoiceForm, date: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Échéance *</Label>
-                    <Input
-                      type="date"
-                      value={invoiceForm.echeance}
-                      onChange={(e) => setInvoiceForm({ ...invoiceForm, echeance: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                {/* Lines */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <Label>Lignes de facturation</Label>
-                    <Button type="button" variant="outline" size="sm" onClick={addLigne}>
-                      <Plus className="h-4 w-4 mr-1" /> Ajouter
-                    </Button>
-                  </div>
-                  {lignes.map((ligne, index) => (
-                    <div key={index} className="flex gap-2 items-start">
-                      <Input
-                        placeholder="Description"
-                        value={ligne.description}
-                        onChange={(e) => updateLigne(index, 'description', e.target.value)}
-                        className="flex-1"
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Qté"
-                        value={ligne.quantite}
-                        onChange={(e) => updateLigne(index, 'quantite', e.target.value)}
-                        className="w-20"
-                      />
-                      <Input
-                        type="number"
-                        placeholder="Prix"
-                        value={ligne.prixUnitaire}
-                        onChange={(e) => updateLigne(index, 'prixUnitaire', e.target.value)}
-                        className="w-28"
-                        step="0.001"
-                      />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => removeLigne(index)}
-                        disabled={lignes.length === 1}
-                      >
-                        <Trash2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Taux TVA (%)</Label>
-                    <Input
-                      type="number"
-                      value={invoiceForm.tauxTVA}
-                      onChange={(e) => setInvoiceForm({ ...invoiceForm, tauxTVA: e.target.value })}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Droit de Timbre (DT)</Label>
-                    <Input
-                      type="number"
-                      value={invoiceForm.droitTimbre}
-                      onChange={(e) => setInvoiceForm({ ...invoiceForm, droitTimbre: e.target.value })}
-                      step="0.001"
-                    />
-                  </div>
-                </div>
-
-                {/* Totals Preview */}
-                <div className="p-4 rounded-lg bg-muted space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Total HT:</span>
-                    <span className="font-medium">{totals.ht.toFixed(3)} DT</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>TVA ({invoiceForm.tauxTVA}%):</span>
-                    <span className="font-medium">{totals.tva.toFixed(3)} DT</span>
-                  </div>
-                  <div className="flex justify-between font-semibold border-t pt-2">
-                    <span>Total TTC:</span>
-                    <span className="text-primary">{totals.ttc.toFixed(3)} DT</span>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Observations</Label>
-                  <Textarea
-                    value={invoiceForm.observations}
-                    onChange={(e) => setInvoiceForm({ ...invoiceForm, observations: e.target.value })}
-                    placeholder="Notes..."
-                    rows={2}
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => { setIsInvoiceDialogOpen(false); resetInvoiceForm(); }}>
-                    Annuler
-                  </Button>
-                  <Button type="submit">Créer la facture</Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-        }
+        description="Créez des factures à partir des BR (service) ou BL (vente) et suivez les paiements"
       />
 
       {/* Stats */}
@@ -525,13 +418,21 @@ const Factures = () => {
             <FileText className="h-4 w-4" />
             Liste des factures
           </TabsTrigger>
+          <TabsTrigger value="a-facturer-br" className="gap-2">
+            <Receipt className="h-4 w-4" />
+            BR à facturer ({pendingBRs.length})
+          </TabsTrigger>
+          <TabsTrigger value="a-facturer-bl" className="gap-2">
+            <ShoppingCart className="h-4 w-4" />
+            BL à facturer ({pendingBLs.length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="liste" className="space-y-4">
           {/* Filters */}
           <Card>
             <CardContent className="pt-6">
-              <div className="grid gap-4 md:grid-cols-5">
+              <div className="grid gap-4 md:grid-cols-6">
                 <div className="space-y-2">
                   <Label>Client</Label>
                   <Select value={filterClient} onValueChange={setFilterClient}>
@@ -543,6 +444,19 @@ const Factures = () => {
                       {clients.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                       ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Source</Label>
+                  <Select value={filterSource} onValueChange={setFilterSource}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Toutes" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Toutes les sources</SelectItem>
+                      <SelectItem value="br">Service (BR)</SelectItem>
+                      <SelectItem value="bl">Vente (BL)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -579,7 +493,7 @@ const Factures = () => {
                 <div className="flex items-end">
                   <Button 
                     variant="outline" 
-                    onClick={() => { setFilterClient('all'); setFilterStatus('all'); setDateDebut(''); setDateFin(''); }}
+                    onClick={() => { setFilterClient('all'); setFilterSource('all'); setFilterStatus('all'); setDateDebut(''); setDateFin(''); }}
                   >
                     Réinitialiser
                   </Button>
@@ -591,10 +505,316 @@ const Factures = () => {
           <DataTable
             columns={invoiceColumns}
             data={filteredInvoices}
-            emptyMessage="Aucune facture. Créez votre première facture pour commencer."
+            emptyMessage="Aucune facture. Créez des factures à partir des BR ou BL."
           />
         </TabsContent>
+
+        <TabsContent value="a-facturer-br" className="space-y-4">
+          {pendingBRs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-4">
+                <Receipt className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <h3 className="font-serif text-xl font-semibold mb-2">Aucun BR à facturer</h3>
+              <p className="text-muted-foreground text-center max-w-md">
+                Les BR de type Façon fermés et non encore facturés apparaissent ici.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {pendingBRs.map((br) => {
+                const client = clients.find(c => c.id === br.clientId);
+                const trit = triturations.find(t => t.brId === br.id);
+                return (
+                  <Card key={br.id}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="font-serif text-lg">{br.number}</CardTitle>
+                        <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
+                          Façon
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Client: </span>
+                        <span className="font-medium">{client?.name}</span>
+                      </div>
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Poids net: </span>
+                        <span className="font-medium">{br.poidsNet.toLocaleString()} kg</span>
+                      </div>
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Date: </span>
+                        <span className="font-medium">{format(new Date(br.date), 'dd/MM/yyyy', { locale: fr })}</span>
+                      </div>
+                      {trit && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">Huile: </span>
+                          <span className="font-medium">{trit.quantiteHuile.toLocaleString()} L</span>
+                        </div>
+                      )}
+                      <Button className="w-full mt-2" onClick={() => openBRInvoiceDialog(br)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Créer la facture
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="a-facturer-bl" className="space-y-4">
+          {pendingBLs.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-4">
+                <ShoppingCart className="h-10 w-10 text-muted-foreground" />
+              </div>
+              <h3 className="font-serif text-xl font-semibold mb-2">Aucun BL à facturer</h3>
+              <p className="text-muted-foreground text-center max-w-md">
+                Les bons de livraison non encore facturés apparaissent ici.
+              </p>
+            </div>
+          ) : (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              {pendingBLs.map((bl) => {
+                const client = clients.find(c => c.id === bl.clientId);
+                return (
+                  <Card key={bl.id}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="font-serif text-lg">{bl.number}</CardTitle>
+                        <span className="text-xs px-2 py-1 rounded-full bg-info/10 text-info">
+                          Vente
+                        </span>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Client: </span>
+                        <span className="font-medium">{client?.name}</span>
+                      </div>
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Quantité: </span>
+                        <span className="font-medium">{bl.quantite.toLocaleString()} L</span>
+                      </div>
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Montant TTC: </span>
+                        <span className="font-semibold text-primary">{bl.montantTTC.toFixed(3)} DT</span>
+                      </div>
+                      <div className="text-sm">
+                        <span className="text-muted-foreground">Date: </span>
+                        <span className="font-medium">{format(new Date(bl.date), 'dd/MM/yyyy', { locale: fr })}</span>
+                      </div>
+                      <Button className="w-full mt-2" onClick={() => openBLInvoiceDialog(bl)}>
+                        <Plus className="mr-2 h-4 w-4" />
+                        Créer la facture
+                      </Button>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
+
+      {/* Create Invoice from BR Dialog */}
+      <Dialog open={isInvoiceBRDialogOpen} onOpenChange={setIsInvoiceBRDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Facturer le service de trituration</DialogTitle>
+          </DialogHeader>
+          {selectedBR && (
+            <form onSubmit={handleCreateInvoiceFromBR} className="space-y-4">
+              <div className="p-4 rounded-lg bg-muted space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">BR</span>
+                  <span className="font-medium">{selectedBR.number}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Client</span>
+                  <span className="font-medium">{clients.find(c => c.id === selectedBR.clientId)?.name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Poids net</span>
+                  <span className="font-semibold text-primary">{selectedBR.poidsNet.toLocaleString()} kg</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Date facture *</Label>
+                  <Input
+                    type="date"
+                    value={brInvoiceForm.date}
+                    onChange={(e) => setBrInvoiceForm({ ...brInvoiceForm, date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Échéance *</Label>
+                  <Input
+                    type="date"
+                    value={brInvoiceForm.echeance}
+                    onChange={(e) => setBrInvoiceForm({ ...brInvoiceForm, echeance: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Prix unitaire (DT/kg) *</Label>
+                <Input
+                  type="number"
+                  value={brInvoiceForm.prixUnitaire}
+                  onChange={(e) => setBrInvoiceForm({ ...brInvoiceForm, prixUnitaire: e.target.value })}
+                  step="0.001"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Taux TVA (%)</Label>
+                  <Input
+                    type="number"
+                    value={brInvoiceForm.tauxTVA}
+                    onChange={(e) => setBrInvoiceForm({ ...brInvoiceForm, tauxTVA: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Droit de Timbre (DT)</Label>
+                  <Input
+                    type="number"
+                    value={brInvoiceForm.droitTimbre}
+                    onChange={(e) => setBrInvoiceForm({ ...brInvoiceForm, droitTimbre: e.target.value })}
+                    step="0.001"
+                  />
+                </div>
+              </div>
+
+              {/* Totals Preview */}
+              <div className="p-4 rounded-lg bg-success/10 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Total HT:</span>
+                  <span className="font-medium">{brTotals.ht.toFixed(3)} DT</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>TVA ({brInvoiceForm.tauxTVA}%):</span>
+                  <span className="font-medium">{brTotals.tva.toFixed(3)} DT</span>
+                </div>
+                <div className="flex justify-between font-semibold border-t pt-2">
+                  <span>Total TTC:</span>
+                  <span className="text-primary">{brTotals.ttc.toFixed(3)} DT</span>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Observations</Label>
+                <Textarea
+                  value={brInvoiceForm.observations}
+                  onChange={(e) => setBrInvoiceForm({ ...brInvoiceForm, observations: e.target.value })}
+                  placeholder="Notes..."
+                  rows={2}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsInvoiceBRDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button type="submit">Créer la facture</Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Create Invoice from BL Dialog */}
+      <Dialog open={isInvoiceBLDialogOpen} onOpenChange={setIsInvoiceBLDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Facturer la vente d'huile</DialogTitle>
+          </DialogHeader>
+          {selectedBL && (
+            <form onSubmit={handleCreateInvoiceFromBL} className="space-y-4">
+              <div className="p-4 rounded-lg bg-muted space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">BL</span>
+                  <span className="font-medium">{selectedBL.number}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Client</span>
+                  <span className="font-medium">{clients.find(c => c.id === selectedBL.clientId)?.name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Quantité</span>
+                  <span className="font-medium">{selectedBL.quantite.toLocaleString()} L</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Prix unitaire</span>
+                  <span className="font-medium">{selectedBL.prixUnitaire.toFixed(3)} DT/L</span>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-lg bg-success/10 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span>Total HT:</span>
+                  <span className="font-medium">{selectedBL.montantHT.toFixed(3)} DT</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>TVA ({selectedBL.tauxTVA}%):</span>
+                  <span className="font-medium">{selectedBL.montantTVA.toFixed(3)} DT</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span>Droit de Timbre:</span>
+                  <span className="font-medium">{selectedBL.droitTimbre.toFixed(3)} DT</span>
+                </div>
+                <div className="flex justify-between font-semibold border-t pt-2">
+                  <span>Total TTC:</span>
+                  <span className="text-primary">{selectedBL.montantTTC.toFixed(3)} DT</span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Date facture *</Label>
+                  <Input
+                    type="date"
+                    value={blInvoiceForm.date}
+                    onChange={(e) => setBlInvoiceForm({ ...blInvoiceForm, date: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Échéance *</Label>
+                  <Input
+                    type="date"
+                    value={blInvoiceForm.echeance}
+                    onChange={(e) => setBlInvoiceForm({ ...blInvoiceForm, echeance: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Observations</Label>
+                <Textarea
+                  value={blInvoiceForm.observations}
+                  onChange={(e) => setBlInvoiceForm({ ...blInvoiceForm, observations: e.target.value })}
+                  placeholder="Notes..."
+                  rows={2}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsInvoiceBLDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button type="submit">Créer la facture</Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Payment Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
@@ -695,12 +915,16 @@ const Factures = () => {
                   <p className="font-medium">{clients.find(c => c.id === selectedInvoice.clientId)?.name}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Date</p>
-                  <p className="font-medium">{format(new Date(selectedInvoice.date), 'dd MMMM yyyy', { locale: fr })}</p>
+                  <p className="text-sm text-muted-foreground">Source</p>
+                  <p className="font-medium">
+                    {selectedInvoice.source === 'br' ? 'Service (BR)' : 'Vente (BL)'} - {selectedInvoice.sourceNumber}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Échéance</p>
-                  <p className="font-medium">{format(new Date(selectedInvoice.echeance), 'dd MMMM yyyy', { locale: fr })}</p>
+                  <p className="text-sm text-muted-foreground">Date / Échéance</p>
+                  <p className="font-medium">
+                    {format(new Date(selectedInvoice.date), 'dd/MM/yyyy', { locale: fr })} / {format(new Date(selectedInvoice.echeance), 'dd/MM/yyyy', { locale: fr })}
+                  </p>
                 </div>
               </div>
 
