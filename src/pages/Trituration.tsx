@@ -19,7 +19,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAppStore } from '@/store/appStore';
 import { BonReception, Trituration as TriturationT } from '@/types';
-import { Factory, Droplets, Scale, Calendar, Filter } from 'lucide-react';
+import { Factory, Droplets, Scale, Calendar, Filter, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -36,6 +36,7 @@ const Trituration = () => {
   // Filtres pour l'historique
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
+  const [searchBR, setSearchBR] = useState('');
 
   const openBRs = bonsReception.filter(br => br.status === 'open');
 
@@ -72,25 +73,39 @@ const Trituration = () => {
   const getClient = (clientId: string) => clients.find(c => c.id === clientId);
   const getBR = (brId: string) => bonsReception.find(br => br.id === brId);
 
-  // Filtrer les triturations par date
+  // Filtrer les triturations par date et recherche BR
   const filteredTriturations = useMemo(() => {
-    if (!dateDebut && !dateFin) return triturations;
+    let result = triturations;
     
-    return triturations.filter(trit => {
-      const tritDate = new Date(trit.date);
-      const start = dateDebut ? startOfDay(parseISO(dateDebut)) : null;
-      const end = dateFin ? endOfDay(parseISO(dateFin)) : null;
+    // Filtre par numéro BR
+    if (searchBR.trim()) {
+      result = result.filter(trit => {
+        const br = getBR(trit.brId);
+        return br?.number.toLowerCase().includes(searchBR.toLowerCase());
+      });
+    }
+    
+    // Filtre par date
+    if (dateDebut || dateFin) {
+      result = result.filter(trit => {
+        const tritDate = new Date(trit.date);
+        const start = dateDebut ? startOfDay(parseISO(dateDebut)) : null;
+        const end = dateFin ? endOfDay(parseISO(dateFin)) : null;
 
-      if (start && end) {
-        return isWithinInterval(tritDate, { start, end });
-      } else if (start) {
-        return tritDate >= start;
-      } else if (end) {
-        return tritDate <= end;
-      }
-      return true;
-    });
-  }, [triturations, dateDebut, dateFin]);
+        if (start && end) {
+          return isWithinInterval(tritDate, { start, end });
+        } else if (start) {
+          return tritDate >= start;
+        } else if (end) {
+          return tritDate <= end;
+        }
+        return true;
+      });
+    }
+    
+    // Trier par date chronologique (plus ancien en premier)
+    return [...result].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [triturations, dateDebut, dateFin, searchBR, bonsReception]);
 
   // Statistiques filtrées
   const stats = useMemo(() => {
@@ -113,6 +128,7 @@ const Trituration = () => {
   const resetFilters = () => {
     setDateDebut('');
     setDateFin('');
+    setSearchBR('');
   };
 
   const columns = [
@@ -242,6 +258,20 @@ const Trituration = () => {
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap items-end gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="searchBR">Rechercher par N° BR</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="searchBR"
+                      type="text"
+                      placeholder="Ex: BR00001"
+                      value={searchBR}
+                      onChange={(e) => setSearchBR(e.target.value)}
+                      className="w-[200px] pl-9"
+                    />
+                  </div>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="dateDebut">Date début</Label>
                   <Input
