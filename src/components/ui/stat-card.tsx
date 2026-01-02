@@ -38,7 +38,7 @@ export function StatCard({ title, value, subtitle, darkText, icon, trend, varian
             {title}
           </p>
           <p className={cn(
-            "mt-2 text-3xl font-semibold font-serif",
+            "mt-2 text-xl font-semibold font-serif whitespace-nowrap",
             darkText && "text-foreground"
           )}>{value}</p>
           {subtitle && (
