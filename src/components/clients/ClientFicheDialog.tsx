@@ -435,75 +435,31 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
             </Table>
           </div>
 
-          {/* Summary Cards - Compact single line */}
-          <div className="flex flex-wrap gap-2 justify-between">
-            <div className="flex items-center gap-2 px-3 py-2 bg-secondary/20 rounded-lg">
-              <span className="text-xs text-muted-foreground">Capital FDR:</span>
-              <span className="font-semibold text-sm">{totals.capitalDT.toFixed(3)} DT</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2 bg-primary/10 rounded-lg">
-              <span className="text-xs text-muted-foreground">Avances:</span>
-              <span className="font-semibold text-sm text-primary">{totals.avanceDT.toFixed(3)} DT</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2 bg-accent/20 rounded-lg">
-              <span className="text-xs text-muted-foreground">Olives:</span>
-              <span className="font-semibold text-sm">{totals.brKg.toLocaleString()} kg</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
-              <span className="text-xs text-green-700 dark:text-green-400">Payé:</span>
-              <span className="font-semibold text-sm text-green-700 dark:text-green-400">{totals.paidKg.toLocaleString()} kg</span>
-            </div>
-            <div className="flex items-center gap-2 px-3 py-2 bg-red-100 dark:bg-red-900/30 rounded-lg">
-              <span className="text-xs text-red-700 dark:text-red-400">Non payé:</span>
-              <span className="font-semibold text-sm text-red-700 dark:text-red-400">{totals.unpaidKg.toLocaleString()} kg</span>
-            </div>
+          {/* Tableau récapitulatif */}
+          <div className="border border-border rounded-lg overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead>Capital (DT)</TableHead>
+                  <TableHead>Avances (DT)</TableHead>
+                  <TableHead>Montant Payé (DT)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="font-semibold text-lg">
+                    {totals.capitalDT.toFixed(3)}
+                  </TableCell>
+                  <TableCell className="font-semibold text-lg text-primary">
+                    {totals.avanceDT.toFixed(3)}
+                  </TableCell>
+                  <TableCell className="font-semibold text-lg text-green-600 dark:text-green-400">
+                    {totals.totalPayments.toFixed(3)}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
           </div>
-
-          {/* Payments Received & Balance */}
-          <div className="flex flex-wrap gap-3 p-3 bg-muted/50 rounded-lg border border-border">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted-foreground">Paiements reçus:</span>
-              <span className="font-semibold text-sm text-green-600 dark:text-green-400">{totals.totalPayments.toFixed(3)} DT</span>
-            </div>
-            <div className="flex-1" />
-            <div className="flex items-center gap-2 px-3 py-1 rounded-lg border-2 border-primary bg-primary/5">
-              <span className="text-xs font-medium">Solde compte:</span>
-              <span className={`font-bold text-lg ${totals.solde >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
-                {totals.solde >= 0 ? '+' : ''}{totals.solde.toFixed(3)} DT
-              </span>
-            </div>
-          </div>
-
-          {/* Payment Receipts History */}
-          {clientPaymentReceipts.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">Historique des paiements reçus</h4>
-              <div className="border border-border rounded-lg overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/30">
-                      <TableHead className="w-[100px]">N° Reçu</TableHead>
-                      <TableHead className="w-[100px]">Date</TableHead>
-                      <TableHead>Mode</TableHead>
-                      <TableHead className="text-right">Montant (DT)</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {clientPaymentReceipts.map(pr => (
-                      <TableRow key={pr.id}>
-                        <TableCell className="font-mono text-xs">{pr.number}</TableCell>
-                        <TableCell className="text-sm">{format(new Date(pr.date), 'dd/MM/yyyy', { locale: fr })}</TableCell>
-                        <TableCell className="text-sm capitalize">{pr.modePayment}</TableCell>
-                        <TableCell className="text-right font-medium text-green-600 dark:text-green-400">
-                          +{pr.totalMontant.toFixed(3)}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          )}
         </div>
       </DialogContent>
     </Dialog>
