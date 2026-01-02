@@ -15,7 +15,9 @@ import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { useAppStore } from '@/store/appStore';
 import { useToast } from '@/hooks/use-toast';
-import { Receipt, FileText, CheckCircle2, Clock, CreditCard, Wallet, ArrowRightLeft } from 'lucide-react';
+import { Receipt, FileText, CheckCircle2, Clock, CreditCard, Wallet, ArrowRightLeft, Download } from 'lucide-react';
+import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
+import { PaymentReceiptPDF } from '@/components/pdf/PaymentReceiptPDF';
 import { TransactionType, PaymentMode, PaymentReceipt } from '@/types';
 
 interface BRToPay {
@@ -44,6 +46,10 @@ const paymentModeLabels: Record<PaymentMode, string> = {
 
 export default function Paiement() {
   const { bonsReception, triturations, clients, paymentReceipts, settings, addPaymentReceipt } = useAppStore();
+
+  const getClientForReceipt = (receipt: PaymentReceipt) => {
+    return clients.find(c => c.id === receipt.clientId);
+  };
   const { toast } = useToast();
 
   const [selectedBRs, setSelectedBRs] = useState<string[]>([]);
@@ -345,11 +351,25 @@ export default function Paiement() {
     {
       key: 'actions',
       header: '',
-      render: (r: PaymentReceipt) => (
-        <Button variant="ghost" size="sm" onClick={() => openDetailDialog(r)}>
-          <FileText className="h-4 w-4" />
-        </Button>
-      ),
+      render: (r: PaymentReceipt) => {
+        const client = getClientForReceipt(r);
+        return (
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={() => openDetailDialog(r)}>
+              <FileText className="h-4 w-4" />
+            </Button>
+            {client && (
+              <PDFDownloadButton
+                document={<PaymentReceiptPDF receipt={r} client={client} settings={settings} />}
+                fileName={`Recu_${r.number}.pdf`}
+                label=""
+                variant="ghost"
+                size="icon"
+              />
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -648,6 +668,18 @@ export default function Paiement() {
             <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
               Fermer
             </Button>
+            {(() => {
+              const client = getClientForReceipt(selectedReceipt);
+              return client ? (
+                <PDFDownloadButton
+                  document={<PaymentReceiptPDF receipt={selectedReceipt} client={client} settings={settings} />}
+                  fileName={`Recu_${selectedReceipt.number}.pdf`}
+                  label="Télécharger PDF"
+                  variant="default"
+                  size="default"
+                />
+              ) : null;
+            })()}
           </DialogFooter>
         </DialogContent>
       </Dialog>
