@@ -57,6 +57,40 @@ export interface StockAffectation {
   date: Date;
 }
 
+export type StockMovementType = 'entree' | 'sortie_vente' | 'transfert_in' | 'transfert_out';
+
+export interface StockMovement {
+  id: string;
+  reservoirId: string;
+  type: StockMovementType;
+  quantite: number;
+  date: Date;
+  reference?: string; // BR number, BL number, or transfer reference
+  clientId?: string; // For sales
+  prixUnitaire?: number; // For sales
+  tauxTVA?: number; // For sales
+  droitTimbre?: number; // For sales
+  linkedReservoirId?: string; // For transfers
+  createdAt: Date;
+}
+
+export interface BonLivraison {
+  id: string;
+  number: string;
+  date: Date;
+  clientId: string;
+  client?: Client;
+  reservoirId: string;
+  quantite: number;
+  prixUnitaire: number;
+  tauxTVA: number;
+  droitTimbre: number;
+  montantHT: number;
+  montantTVA: number;
+  montantTTC: number;
+  createdAt: Date;
+}
+
 export type PaymentStatus = 'non_paye' | 'paye';
 
 export interface Payment {
