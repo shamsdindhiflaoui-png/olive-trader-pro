@@ -89,6 +89,7 @@ const Dashboard = () => {
           title="Huile Produite"
           value={`${totalHuile.toLocaleString()} L`}
           subtitle="Total trituré"
+          subtitleDark
           icon={Droplets}
           variant="primary"
         />
