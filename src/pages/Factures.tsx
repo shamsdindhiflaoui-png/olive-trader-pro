@@ -982,8 +982,8 @@ const Factures = () => {
                     <thead className="bg-muted">
                       <tr>
                         <th className="text-left p-2">Description</th>
-                        <th className="text-center p-2">Qté</th>
-                        <th className="text-right p-2">Prix Unit.</th>
+                        <th className="text-center p-2">{selectedInvoice.source === 'br' ? 'Qté (kg)' : 'Qté (L)'}</th>
+                        <th className="text-right p-2">{selectedInvoice.source === 'br' ? 'Prix/kg' : 'Prix Unit.'}</th>
                         <th className="text-right p-2">Total</th>
                       </tr>
                     </thead>
@@ -991,8 +991,8 @@ const Factures = () => {
                       {selectedInvoice.lignes.map((ligne) => (
                         <tr key={ligne.id} className="border-t">
                           <td className="p-2">{ligne.description}</td>
-                          <td className="text-center p-2">{ligne.quantite}</td>
-                          <td className="text-right p-2">{ligne.prixUnitaire.toFixed(3)} DT</td>
+                          <td className="text-center p-2">{ligne.quantite.toLocaleString()} {selectedInvoice.source === 'br' ? 'kg' : 'L'}</td>
+                          <td className="text-right p-2">{ligne.prixUnitaire.toFixed(3)} DT/{selectedInvoice.source === 'br' ? 'kg' : 'L'}</td>
                           <td className="text-right p-2 font-medium">{ligne.montant.toFixed(3)} DT</td>
                         </tr>
                       ))}
