@@ -62,17 +62,17 @@ const BonsReception = () => {
     e.preventDefault();
     
     if (!formData.clientId) {
-      toast.error('Veuillez sélectionner un client');
+      toast.error('Veuillez sélectionner un client | يرجى اختيار حريف');
       return;
     }
 
     if (!formData.poidsPlein || !formData.poidsVide) {
-      toast.error('Les poids sont obligatoires');
+      toast.error('Les poids sont obligatoires | الأوزان إجبارية');
       return;
     }
 
     if (poidsNet <= 0) {
-      toast.error('Le poids net doit être positif');
+      toast.error('Le poids net doit être positif | الوزن الصافي يجب أن يكون موجباً');
       return;
     }
 
@@ -85,7 +85,7 @@ const BonsReception = () => {
       observations: formData.observations || undefined,
     });
 
-    toast.success('Bon de réception créé avec succès');
+    toast.success('Bon de réception créé avec succès | تم إنشاء وصل الاستلام بنجاح');
     setIsDialogOpen(false);
     resetForm();
   };
@@ -93,19 +93,19 @@ const BonsReception = () => {
   const columns = [
     { 
       key: 'number', 
-      header: 'N° BR',
+      header: 'N° BR | رقم الوصل',
       render: (br: BonReception) => (
         <span className="font-medium text-primary">{br.number}</span>
       )
     },
     { 
       key: 'date', 
-      header: 'Date',
+      header: 'Date | التاريخ',
       render: (br: BonReception) => format(new Date(br.date), 'dd MMM yyyy', { locale: fr })
     },
     { 
       key: 'client', 
-      header: 'Client',
+      header: 'Client | الحريف',
       render: (br: BonReception) => {
         const client = clients.find(c => c.id === br.clientId);
         return client?.name || '-';
@@ -113,29 +113,29 @@ const BonsReception = () => {
     },
     { 
       key: 'poidsPlein', 
-      header: 'Poids Plein',
+      header: 'Poids Plein | الوزن الكامل',
       render: (br: BonReception) => `${br.poidsPlein.toLocaleString()} kg`
     },
     { 
       key: 'poidsVide', 
-      header: 'Poids Vide',
+      header: 'Poids Vide | الوزن الفارغ',
       render: (br: BonReception) => `${br.poidsVide.toLocaleString()} kg`
     },
     { 
       key: 'poidsNet', 
-      header: 'Poids Net',
+      header: 'Poids Net | الوزن الصافي',
       render: (br: BonReception) => (
         <span className="font-semibold text-primary">{br.poidsNet.toLocaleString()} kg</span>
       )
     },
     { 
       key: 'status', 
-      header: 'Statut',
+      header: 'Statut | الحالة',
       render: (br: BonReception) => <StatusBadge status={br.status} />
     },
     { 
       key: 'actions', 
-      header: 'Actions',
+      header: 'Actions | إجراءات',
       render: (br: BonReception) => {
         const client = clients.find(c => c.id === br.clientId);
         return (
@@ -165,24 +165,24 @@ const BonsReception = () => {
   return (
     <MainLayout>
       <PageHeader 
-        title="Bons de Réception" 
-        description="Gérez les entrées d'olives"
+        title="Bons de Réception | وصولات الاستلام" 
+        description="Gérez les entrées d'olives | إدارة استلام الزيتون"
         action={
           <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
-                Nouveau BR
+                Nouveau BR | وصل جديد
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-lg">
               <DialogHeader>
-                <DialogTitle className="font-serif">Nouveau Bon de Réception</DialogTitle>
+                <DialogTitle className="font-serif">Nouveau Bon de Réception | وصل استلام جديد</DialogTitle>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="date">Date *</Label>
+                    <Label htmlFor="date">Date * | التاريخ *</Label>
                     <Input
                       id="date"
                       type="date"
@@ -191,13 +191,13 @@ const BonsReception = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="clientId">Client *</Label>
+                    <Label htmlFor="clientId">Client * | الحريف *</Label>
                     <Select
                       value={formData.clientId}
                       onValueChange={(value) => setFormData({ ...formData, clientId: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner..." />
+                        <SelectValue placeholder="Sélectionner... | اختر..." />
                       </SelectTrigger>
                       <SelectContent>
                         {clients.map((client) => (
@@ -212,7 +212,7 @@ const BonsReception = () => {
 
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="poidsPlein">Poids Plein (kg) *</Label>
+                    <Label htmlFor="poidsPlein">Poids Plein (kg) * | الوزن الكامل *</Label>
                     <Input
                       id="poidsPlein"
                       type="number"
@@ -222,7 +222,7 @@ const BonsReception = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="poidsVide">Poids Vide (kg) *</Label>
+                    <Label htmlFor="poidsVide">Poids Vide (kg) * | الوزن الفارغ *</Label>
                     <Input
                       id="poidsVide"
                       type="number"
@@ -232,7 +232,7 @@ const BonsReception = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Poids Net (kg)</Label>
+                    <Label>Poids Net (kg) | الوزن الصافي</Label>
                     <div className="flex h-10 items-center rounded-md border border-input bg-muted px-3 text-sm font-semibold text-primary">
                       {poidsNet.toLocaleString()}
                     </div>
@@ -240,31 +240,31 @@ const BonsReception = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="vehicle">Véhicule</Label>
+                  <Label htmlFor="vehicle">Véhicule | المركبة</Label>
                   <Input
                     id="vehicle"
                     value={formData.vehicle}
                     onChange={(e) => setFormData({ ...formData, vehicle: e.target.value })}
-                    placeholder="Immatriculation ou description"
+                    placeholder="Immatriculation ou description | رقم اللوحة أو الوصف"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="observations">Observations</Label>
+                  <Label htmlFor="observations">Observations | ملاحظات</Label>
                   <Textarea
                     id="observations"
                     value={formData.observations}
                     onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-                    placeholder="Notes additionnelles..."
+                    placeholder="Notes additionnelles... | ملاحظات إضافية..."
                     rows={2}
                   />
                 </div>
 
                 <div className="flex justify-end gap-3 pt-4">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                    Annuler
+                    Annuler | إلغاء
                   </Button>
-                  <Button type="submit">Créer le BR</Button>
+                  <Button type="submit">Créer le BR | إنشاء الوصل</Button>
                 </div>
               </form>
             </DialogContent>
@@ -275,7 +275,7 @@ const BonsReception = () => {
       {clients.length === 0 && (
         <div className="mb-6 p-4 rounded-lg bg-warning/10 border border-warning/20 text-warning">
           <p className="text-sm font-medium">
-            Aucun client enregistré. Veuillez d'abord créer des clients avant de créer des bons de réception.
+            Aucun client enregistré. Veuillez d'abord créer des clients avant de créer des bons de réception. | لا يوجد حرفاء مسجلين. يرجى إنشاء حرفاء أولاً.
           </p>
         </div>
       )}
@@ -285,7 +285,7 @@ const BonsReception = () => {
         data={[...bonsReception].sort((a, b) => 
           new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         )}
-        emptyMessage="Aucun bon de réception. Cliquez sur 'Nouveau BR' pour commencer."
+        emptyMessage="Aucun bon de réception. Cliquez sur 'Nouveau BR' pour commencer. | لا توجد وصولات استلام"
       />
 
       {/* View BR Dialog */}
@@ -293,7 +293,7 @@ const BonsReception = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-serif">
-              Détails du BR {viewingBR?.number}
+              Détails du BR | تفاصيل الوصل {viewingBR?.number}
             </DialogTitle>
           </DialogHeader>
           {viewingBR && (() => {
@@ -302,37 +302,37 @@ const BonsReception = () => {
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-muted-foreground">Date</p>
+                    <p className="text-muted-foreground">Date | التاريخ</p>
                     <p className="font-medium">{format(new Date(viewingBR.date), 'dd MMMM yyyy', { locale: fr })}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Statut</p>
+                    <p className="text-muted-foreground">Statut | الحالة</p>
                     <StatusBadge status={viewingBR.status} />
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Client</p>
+                    <p className="text-muted-foreground">Client | الحريف</p>
                     <p className="font-medium">{client?.name}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Véhicule</p>
+                    <p className="text-muted-foreground">Véhicule | المركبة</p>
                     <p className="font-medium">{viewingBR.vehicle || '-'}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Poids Plein</p>
+                    <p className="text-muted-foreground">Poids Plein | الوزن الكامل</p>
                     <p className="font-medium">{viewingBR.poidsPlein.toLocaleString()} kg</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground">Poids Vide</p>
+                    <p className="text-muted-foreground">Poids Vide | الوزن الفارغ</p>
                     <p className="font-medium">{viewingBR.poidsVide.toLocaleString()} kg</p>
                   </div>
                   <div className="col-span-2">
-                    <p className="text-muted-foreground">Poids Net</p>
+                    <p className="text-muted-foreground">Poids Net | الوزن الصافي</p>
                     <p className="text-2xl font-semibold text-primary">{viewingBR.poidsNet.toLocaleString()} kg</p>
                   </div>
                 </div>
                 {viewingBR.observations && (
                   <div>
-                    <p className="text-muted-foreground text-sm">Observations</p>
+                    <p className="text-muted-foreground text-sm">Observations | ملاحظات</p>
                     <p className="text-sm">{viewingBR.observations}</p>
                   </div>
                 )}
@@ -341,7 +341,7 @@ const BonsReception = () => {
                     <PDFDownloadButton
                       document={<BonReceptionPDF br={viewingBR} client={client} settings={settings} />}
                       fileName={`${viewingBR.number}.pdf`}
-                      label="Télécharger le PDF"
+                      label="Télécharger le PDF | تحميل PDF"
                       variant="default"
                       size="default"
                     />

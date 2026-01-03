@@ -13,14 +13,14 @@ import {
 } from 'lucide-react';
 
 const navItems = [
-  { path: '/', label: 'Tableau de bord', icon: LayoutDashboard },
-  { path: '/clients', label: 'Clients', icon: Users },
-  { path: '/bons-reception', label: 'Bons de Réception', icon: FileText },
-  { path: '/trituration', label: 'Trituration', icon: Factory },
-  { path: '/stock', label: 'Stock', icon: Database },
-  { path: '/vente', label: 'Vente', icon: ShoppingCart },
-  { path: '/paiement', label: 'Paiement', icon: CreditCard },
-  { path: '/parametres', label: 'Paramètres', icon: Settings },
+  { path: '/', label: 'Tableau de bord', labelAr: 'لوحة القيادة', icon: LayoutDashboard },
+  { path: '/clients', label: 'Clients', labelAr: 'الحرفاء', icon: Users },
+  { path: '/bons-reception', label: 'Bons de Réception', labelAr: 'وصولات الاستلام', icon: FileText },
+  { path: '/trituration', label: 'Trituration', labelAr: 'العصر', icon: Factory },
+  { path: '/stock', label: 'Stock', labelAr: 'المخزون', icon: Database },
+  { path: '/vente', label: 'Vente', labelAr: 'البيع', icon: ShoppingCart },
+  { path: '/paiement', label: 'Paiement', labelAr: 'الدفع', icon: CreditCard },
+  { path: '/parametres', label: 'Paramètres', labelAr: 'الإعدادات', icon: Settings },
 ];
 
 export function Sidebar() {
@@ -35,8 +35,8 @@ export function Sidebar() {
             <Droplets className="h-6 w-6 text-sidebar-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-serif text-lg font-semibold">Huilerie</h1>
-            <p className="text-xs text-sidebar-foreground/70">Gestion des olives</p>
+            <h1 className="font-serif text-lg font-semibold">Huilerie <span className="text-sm font-normal opacity-80">معصرة</span></h1>
+            <p className="text-xs text-sidebar-foreground/70">Gestion des olives | إدارة الزيتون</p>
           </div>
         </div>
 
@@ -58,7 +58,10 @@ export function Sidebar() {
                 )}
               >
                 <Icon className="h-5 w-5" />
-                {item.label}
+                <div className="flex flex-col">
+                  <span>{item.label}</span>
+                  <span className="text-xs opacity-70" dir="rtl">{item.labelAr}</span>
+                </div>
               </Link>
             );
           })}

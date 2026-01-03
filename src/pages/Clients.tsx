@@ -29,9 +29,9 @@ import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
 import { AllClientsExtraitPDF } from '@/components/pdf/AllClientsExtraitPDF';
 
 const clientTypeLabels: Record<TransactionType, string> = {
-  facon: 'Façon (Service)',
-  bawaza: 'Bawaza',
-  achat_base: 'Achat à la base',
+  facon: 'Façon (Service) | خدمة',
+  bawaza: 'Bawaza | باوازا',
+  achat_base: 'Achat à la base | شراء من المصدر',
 };
 
 const Clients = () => {
@@ -60,16 +60,16 @@ const Clients = () => {
     e.preventDefault();
     
     if (!formData.name.trim()) {
-      toast.error('Le nom du client est obligatoire');
+      toast.error('Le nom du client est obligatoire | اسم الحريف إجباري');
       return;
     }
 
     if (editingClient) {
       updateClient(editingClient.id, formData);
-      toast.success('Client modifié avec succès');
+      toast.success('Client modifié avec succès | تم تعديل الحريف بنجاح');
     } else {
       addClient(formData);
-      toast.success('Client ajouté avec succès');
+      toast.success('Client ajouté avec succès | تم إضافة الحريف بنجاح');
     }
 
     setIsDialogOpen(false);
@@ -88,9 +88,9 @@ const Clients = () => {
   };
 
   const handleDelete = (client: Client) => {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer le client "${client.name}" ?`)) {
+    if (confirm(`Êtes-vous sûr de vouloir supprimer le client "${client.name}" ? | هل أنت متأكد من حذف الحريف؟`)) {
       deleteClient(client.id);
-      toast.success('Client supprimé avec succès');
+      toast.success('Client supprimé avec succès | تم حذف الحريف بنجاح');
     }
   };
 
@@ -122,15 +122,15 @@ const Clients = () => {
   const columns = [
     { 
       key: 'code', 
-      header: 'Code',
+      header: 'Code | الرمز',
       render: (client: Client) => (
         <span className="font-medium text-primary">{client.code}</span>
       )
     },
-    { key: 'name', header: 'Nom / Raison sociale' },
+    { key: 'name', header: 'Nom / Raison sociale | الاسم' },
     { 
       key: 'transactionType', 
-      header: 'Type Client',
+      header: 'Type Client | نوع الحريف',
       render: (client: Client) => (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
           {clientTypeLabels[client.transactionType]}
@@ -139,7 +139,7 @@ const Clients = () => {
     },
     { 
       key: 'capitalDT', 
-      header: 'Capital (DT)',
+      header: 'Capital (DT) | رأس المال',
       render: (client: Client) => {
         const { capitalDT } = getClientTotals(client.id);
         return capitalDT > 0 ? <span className="font-medium">{capitalDT.toFixed(2)}</span> : '-';
@@ -147,7 +147,7 @@ const Clients = () => {
     },
     { 
       key: 'avanceDT', 
-      header: 'Avance (DT)',
+      header: 'Avance (DT) | التسبقة',
       render: (client: Client) => {
         const { avanceDT } = getClientTotals(client.id);
         return avanceDT > 0 ? <span className="font-medium">{avanceDT.toFixed(2)}</span> : '-';
@@ -155,7 +155,7 @@ const Clients = () => {
     },
     { 
       key: 'brKg', 
-      header: 'BR (kg)',
+      header: 'BR (kg) | الوصولات',
       render: (client: Client) => {
         const { brKg } = getClientTotals(client.id);
         return brKg > 0 ? <span className="font-medium">{brKg.toLocaleString()}</span> : '-';
@@ -163,14 +163,14 @@ const Clients = () => {
     },
     { 
       key: 'actions', 
-      header: 'Actions',
+      header: 'Actions | إجراءات',
       render: (client: Client) => (
         <div className="flex items-center gap-2">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={(e) => { e.stopPropagation(); setFicheClient(client); }}
-            title="Voir la fiche"
+            title="Voir la fiche | عرض البطاقة"
           >
             <FileText className="h-4 w-4" />
           </Button>
@@ -197,42 +197,42 @@ const Clients = () => {
   return (
     <MainLayout>
       <PageHeader 
-        title="Gestion des Clients" 
-        description="Gérez votre portefeuille clients"
+        title="Gestion des Clients | إدارة الحرفاء" 
+        description="Gérez votre portefeuille clients | إدارة محفظة حرفائك"
         action={
           <div className="flex items-center gap-3">
             <PDFDownloadButton
               document={<AllClientsExtraitPDF clients={allClientsData} companyName={settings.companyName} />}
               fileName={`extrait-complet-clients-${new Date().toISOString().split('T')[0]}.pdf`}
-              label="Générer l'extrait PDF complet"
+              label="Générer l'extrait PDF | تحميل PDF"
               variant="outline"
             />
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
-                  Nouveau Client
+                  Nouveau Client | حريف جديد
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle className="font-serif">
-                    {editingClient ? 'Modifier le client' : 'Nouveau client'}
+                    {editingClient ? 'Modifier le client | تعديل الحريف' : 'Nouveau client | حريف جديد'}
                   </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Nom / Raison sociale *</Label>
+                    <Label htmlFor="name">Nom / Raison sociale * | الاسم *</Label>
                     <Input
                       id="name"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Entrez le nom du client"
+                      placeholder="Entrez le nom du client | أدخل اسم الحريف"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="transactionType">Type Client *</Label>
+                    <Label htmlFor="transactionType">Type Client * | نوع الحريف *</Label>
                     <Select
                       value={formData.transactionType}
                       onValueChange={(value: TransactionType) => 
@@ -243,40 +243,40 @@ const Clients = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="facon">Façon (Service)</SelectItem>
-                        <SelectItem value="bawaza">Bawaza</SelectItem>
-                        <SelectItem value="achat_base">Achat à la base</SelectItem>
+                        <SelectItem value="facon">Façon (Service) | خدمة</SelectItem>
+                        <SelectItem value="bawaza">Bawaza | باوازا</SelectItem>
+                        <SelectItem value="achat_base">Achat à la base | شراء من المصدر</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Téléphone</Label>
+                    <Label htmlFor="phone">Téléphone | الهاتف</Label>
                     <Input
                       id="phone"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="Numéro de téléphone"
+                      placeholder="Numéro de téléphone | رقم الهاتف"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="observations">Observations</Label>
+                    <Label htmlFor="observations">Observations | ملاحظات</Label>
                     <Textarea
                       id="observations"
                       value={formData.observations}
                       onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-                      placeholder="Notes additionnelles..."
+                      placeholder="Notes additionnelles... | ملاحظات إضافية..."
                       rows={3}
                     />
                   </div>
 
                   <div className="flex justify-end gap-3 pt-4">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Annuler
+                      Annuler | إلغاء
                     </Button>
                     <Button type="submit">
-                      {editingClient ? 'Enregistrer' : 'Créer'}
+                      {editingClient ? 'Enregistrer | حفظ' : 'Créer | إنشاء'}
                     </Button>
                   </div>
                 </form>
@@ -289,7 +289,7 @@ const Clients = () => {
       <DataTable
         columns={columns}
         data={clients}
-        emptyMessage="Aucun client enregistré. Cliquez sur 'Nouveau Client' pour commencer."
+        emptyMessage="Aucun client enregistré. Cliquez sur 'Nouveau Client' pour commencer. | لا يوجد حرفاء مسجلين"
       />
 
       {/* Client Fiche Dialog for all clients */}
