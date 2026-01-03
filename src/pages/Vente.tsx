@@ -1,0 +1,582 @@
+import { useState, useMemo } from 'react';
+import { MainLayout } from '@/components/layout/MainLayout';
+import { PageHeader } from '@/components/layout/PageHeader';
+import { DataTable } from '@/components/ui/data-table';
+import { StatCard } from '@/components/ui/stat-card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useAppStore } from '@/store/appStore';
+import { BonLivraison, PaymentMode } from '@/types';
+import { ShoppingCart, FileText, Download, CheckCircle2, Clock, CreditCard, Wallet, ArrowRightLeft } from 'lucide-react';
+import { toast } from 'sonner';
+import { format } from 'date-fns';
+import { fr } from 'date-fns/locale';
+import { PDFDownloadLink } from '@react-pdf/renderer';
+import { BonLivraisonPDF } from '@/components/pdf/BonLivraisonPDF';
+import { formatNumber } from '@/lib/utils';
+
+const paymentModeLabels: Record<PaymentMode, string> = {
+  especes: 'Espèces',
+  virement: 'Virement',
+  compensation: 'Compensation',
+};
+
+const paymentModeIcons: Record<PaymentMode, React.ReactNode> = {
+  especes: <Wallet className="h-4 w-4" />,
+  virement: <CreditCard className="h-4 w-4" />,
+  compensation: <ArrowRightLeft className="h-4 w-4" />,
+};
+
+export default function Vente() {
+  const { 
+    clients, 
+    reservoirs, 
+    bonsLivraison,
+    settings,
+    addSale,
+    updateBLPayment,
+  } = useAppStore();
+  
+  const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [selectedBL, setSelectedBL] = useState<BonLivraison | null>(null);
+  const [lastCreatedBL, setLastCreatedBL] = useState<any>(null);
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  
+  const [saleForm, setSaleForm] = useState({
+    clientId: '',
+    reservoirId: '',
+    quantite: '',
+    prixUnitaire: '',
+    tauxTVA: '19',
+    droitTimbre: '1',
+    date: format(new Date(), 'yyyy-MM-dd'),
+  });
+
+  const [paymentForm, setPaymentForm] = useState({
+    modePayment: 'especes' as PaymentMode,
+    reference: '',
+    observations: '',
+    date: format(new Date(), 'yyyy-MM-dd'),
+  });
+
+  // Statistics
+  const stats = useMemo(() => {
+    const totalVentes = bonsLivraison.length;
+    const ventesPayees = bonsLivraison.filter(bl => bl.paymentStatus === 'paye').length;
+    const ventesEnAttente = bonsLivraison.filter(bl => bl.paymentStatus === 'en_attente').length;
+    const montantTotal = bonsLivraison.reduce((sum, bl) => sum + bl.montantTTC, 0);
+    const montantPaye = bonsLivraison
+      .filter(bl => bl.paymentStatus === 'paye')
+      .reduce((sum, bl) => sum + bl.montantTTC, 0);
+    
+    return { totalVentes, ventesPayees, ventesEnAttente, montantTotal, montantPaye };
+  }, [bonsLivraison]);
+
+  // Filtered BLs
+  const filteredBLs = useMemo(() => {
+    if (filterStatus === 'all') return bonsLivraison;
+    return bonsLivraison.filter(bl => bl.paymentStatus === filterStatus);
+  }, [bonsLivraison, filterStatus]);
+
+  const handleSale = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!saleForm.clientId || !saleForm.reservoirId || !saleForm.quantite || !saleForm.prixUnitaire) {
+      toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    const bl = addSale({
+      clientId: saleForm.clientId,
+      reservoirId: saleForm.reservoirId,
+      quantite: Number(saleForm.quantite),
+      prixUnitaire: Number(saleForm.prixUnitaire),
+      tauxTVA: Number(saleForm.tauxTVA),
+      droitTimbre: Number(saleForm.droitTimbre),
+      date: new Date(saleForm.date),
+    });
+
+    if (bl) {
+      const client = clients.find(c => c.id === saleForm.clientId);
+      setLastCreatedBL({ bl, client });
+      toast.success(`Vente enregistrée - ${bl.number}`);
+      setSaleForm({
+        clientId: '',
+        reservoirId: '',
+        quantite: '',
+        prixUnitaire: '',
+        tauxTVA: '19',
+        droitTimbre: '1',
+        date: format(new Date(), 'yyyy-MM-dd'),
+      });
+    } else {
+      toast.error('Vente impossible (quantité insuffisante dans le réservoir)');
+    }
+  };
+
+  const handlePayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!selectedBL) return;
+
+    const success = updateBLPayment(selectedBL.id, {
+      date: new Date(paymentForm.date),
+      modePayment: paymentForm.modePayment,
+      reference: paymentForm.reference || undefined,
+      observations: paymentForm.observations || undefined,
+    });
+
+    if (success) {
+      toast.success(`Paiement enregistré pour ${selectedBL.number}`);
+      setIsPaymentDialogOpen(false);
+      setSelectedBL(null);
+      setPaymentForm({
+        modePayment: 'especes',
+        reference: '',
+        observations: '',
+        date: format(new Date(), 'yyyy-MM-dd'),
+      });
+    } else {
+      toast.error('Erreur lors de l\'enregistrement du paiement');
+    }
+  };
+
+  const openPaymentDialog = (bl: BonLivraison) => {
+    setSelectedBL(bl);
+    setIsPaymentDialogOpen(true);
+  };
+
+  const blColumns = [
+    {
+      key: 'number',
+      header: 'N° BL',
+      render: (bl: BonLivraison) => <span className="font-mono font-medium text-primary">{bl.number}</span>,
+    },
+    {
+      key: 'date',
+      header: 'Date',
+      render: (bl: BonLivraison) => format(new Date(bl.date), 'dd/MM/yyyy', { locale: fr }),
+    },
+    {
+      key: 'client',
+      header: 'Client',
+      render: (bl: BonLivraison) => {
+        const client = clients.find(c => c.id === bl.clientId);
+        return client?.name || '-';
+      },
+    },
+    {
+      key: 'quantite',
+      header: 'Quantité',
+      render: (bl: BonLivraison) => `${formatNumber(bl.quantite)} L`,
+    },
+    {
+      key: 'prixUnitaire',
+      header: 'Prix U.',
+      render: (bl: BonLivraison) => `${formatNumber(bl.prixUnitaire)} DT`,
+    },
+    {
+      key: 'montantTTC',
+      header: 'Montant TTC',
+      render: (bl: BonLivraison) => <span className="font-semibold">{formatNumber(bl.montantTTC)} DT</span>,
+    },
+    {
+      key: 'status',
+      header: 'Statut',
+      render: (bl: BonLivraison) => (
+        <Badge variant={bl.paymentStatus === 'paye' ? 'default' : 'secondary'} className={bl.paymentStatus === 'paye' ? 'bg-success text-success-foreground' : ''}>
+          {bl.paymentStatus === 'paye' ? (
+            <><CheckCircle2 className="h-3 w-3 mr-1" /> Payé</>
+          ) : (
+            <><Clock className="h-3 w-3 mr-1" /> En attente</>
+          )}
+        </Badge>
+      ),
+    },
+    {
+      key: 'payment',
+      header: 'Mode',
+      render: (bl: BonLivraison) => {
+        if (!bl.payment) return '-';
+        return (
+          <div className="flex items-center gap-1 text-sm">
+            {paymentModeIcons[bl.payment.modePayment]}
+            <span>{paymentModeLabels[bl.payment.modePayment]}</span>
+          </div>
+        );
+      },
+    },
+    {
+      key: 'actions',
+      header: '',
+      render: (bl: BonLivraison) => {
+        const client = clients.find(c => c.id === bl.clientId);
+        return (
+          <div className="flex items-center gap-2">
+            {bl.paymentStatus === 'en_attente' && (
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => openPaymentDialog(bl)}
+              >
+                Régler
+              </Button>
+            )}
+            {client && (
+              <PDFDownloadLink
+                document={<BonLivraisonPDF bl={bl} client={client} settings={settings} />}
+                fileName={`BL_${bl.number}.pdf`}
+              >
+                {({ loading }) => (
+                  <Button size="icon" variant="ghost" disabled={loading}>
+                    <Download className="h-4 w-4" />
+                  </Button>
+                )}
+              </PDFDownloadLink>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  return (
+    <MainLayout>
+      <PageHeader 
+        title="Ventes d'Huile" 
+        description="Gestion des ventes en gros et suivi des paiements"
+        action={
+          <Dialog open={isSaleDialogOpen} onOpenChange={(open) => { setIsSaleDialogOpen(open); if (!open) setLastCreatedBL(null); }}>
+            <DialogTrigger asChild>
+              <Button>
+                <ShoppingCart className="mr-2 h-4 w-4" />
+                Nouvelle Vente
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle className="font-serif">Nouvelle vente d'huile</DialogTitle>
+              </DialogHeader>
+              {lastCreatedBL ? (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-success/10 text-center">
+                    <FileText className="h-12 w-12 mx-auto text-success mb-2" />
+                    <p className="font-semibold text-lg">{lastCreatedBL.bl.number}</p>
+                    <p className="text-sm text-muted-foreground">Bon de livraison créé avec succès</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Client:</span>
+                      <p className="font-medium">{lastCreatedBL.client?.name}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Quantité:</span>
+                      <p className="font-medium">{formatNumber(lastCreatedBL.bl.quantite)} L</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Prix unitaire:</span>
+                      <p className="font-medium">{formatNumber(lastCreatedBL.bl.prixUnitaire)} DT/L</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Montant TTC:</span>
+                      <p className="font-medium">{formatNumber(lastCreatedBL.bl.montantTTC)} DT</p>
+                    </div>
+                  </div>
+                  <PDFDownloadLink
+                    document={<BonLivraisonPDF bl={lastCreatedBL.bl} client={lastCreatedBL.client} settings={settings} />}
+                    fileName={`BL_${lastCreatedBL.bl.number}.pdf`}
+                    className="w-full"
+                  >
+                    {({ loading }) => (
+                      <Button className="w-full" variant="outline" disabled={loading}>
+                        <Download className="mr-2 h-4 w-4" />
+                        {loading ? 'Génération...' : 'Télécharger le BL'}
+                      </Button>
+                    )}
+                  </PDFDownloadLink>
+                  <Button className="w-full" onClick={() => setLastCreatedBL(null)}>
+                    Nouvelle vente
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleSale} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Client *</Label>
+                    <Select
+                      value={saleForm.clientId}
+                      onValueChange={(value) => setSaleForm({ ...saleForm, clientId: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner un client..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {clients.map((client) => (
+                          <SelectItem key={client.id} value={client.id}>
+                            {client.name} ({client.code})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Réservoir source *</Label>
+                    <Select
+                      value={saleForm.reservoirId}
+                      onValueChange={(value) => setSaleForm({ ...saleForm, reservoirId: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Sélectionner..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {reservoirs.filter(r => r.quantiteActuelle > 0).map((r) => (
+                          <SelectItem key={r.id} value={r.id}>
+                            {r.code} - {formatNumber(r.quantiteActuelle)} L disponibles
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Quantité (L) *</Label>
+                      <Input
+                        type="number"
+                        value={saleForm.quantite}
+                        onChange={(e) => setSaleForm({ ...saleForm, quantite: e.target.value })}
+                        placeholder="0"
+                        step="0.1"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Prix unitaire (DT/L) *</Label>
+                      <Input
+                        type="number"
+                        value={saleForm.prixUnitaire}
+                        onChange={(e) => setSaleForm({ ...saleForm, prixUnitaire: e.target.value })}
+                        placeholder="0.000"
+                        step="0.001"
+                      />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>TVA (%)</Label>
+                      <Input
+                        type="number"
+                        value={saleForm.tauxTVA}
+                        onChange={(e) => setSaleForm({ ...saleForm, tauxTVA: e.target.value })}
+                        placeholder="19"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Droit de timbre (DT)</Label>
+                      <Input
+                        type="number"
+                        value={saleForm.droitTimbre}
+                        onChange={(e) => setSaleForm({ ...saleForm, droitTimbre: e.target.value })}
+                        placeholder="1"
+                        step="0.1"
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Date</Label>
+                    <Input
+                      type="date"
+                      value={saleForm.date}
+                      onChange={(e) => setSaleForm({ ...saleForm, date: e.target.value })}
+                    />
+                  </div>
+                  {saleForm.quantite && saleForm.prixUnitaire && (
+                    <div className="p-3 rounded-lg bg-secondary/30 space-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span>Montant HT:</span>
+                        <span>{formatNumber(Number(saleForm.quantite) * Number(saleForm.prixUnitaire))} DT</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>TVA ({saleForm.tauxTVA}%):</span>
+                        <span>{formatNumber(Number(saleForm.quantite) * Number(saleForm.prixUnitaire) * Number(saleForm.tauxTVA) / 100)} DT</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Droit de timbre:</span>
+                        <span>{formatNumber(Number(saleForm.droitTimbre))} DT</span>
+                      </div>
+                      <div className="flex justify-between font-semibold pt-1 border-t">
+                        <span>Total TTC:</span>
+                        <span>
+                          {formatNumber(
+                            Number(saleForm.quantite) * Number(saleForm.prixUnitaire) * (1 + Number(saleForm.tauxTVA) / 100) + Number(saleForm.droitTimbre)
+                          )} DT
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setIsSaleDialogOpen(false)}>
+                      Annuler
+                    </Button>
+                    <Button type="submit">Enregistrer la vente</Button>
+                  </div>
+                </form>
+              )}
+            </DialogContent>
+          </Dialog>
+        }
+      />
+
+      {/* Statistics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <StatCard
+          title="Total Ventes"
+          value={stats.totalVentes.toString()}
+          icon={ShoppingCart}
+        />
+        <StatCard
+          title="Ventes Payées"
+          value={stats.ventesPayees.toString()}
+          icon={CheckCircle2}
+          subtitle={`${stats.totalVentes > 0 ? Math.round((stats.ventesPayees / stats.totalVentes) * 100) : 0}% du total`}
+        />
+        <StatCard
+          title="En Attente"
+          value={stats.ventesEnAttente.toString()}
+          icon={Clock}
+        />
+        <StatCard
+          title="Montant Total"
+          value={`${formatNumber(stats.montantTotal)} DT`}
+          icon={CreditCard}
+        />
+      </div>
+
+      {/* Filters */}
+      <div className="mb-6 flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Label>Statut:</Label>
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Tous</SelectItem>
+              <SelectItem value="en_attente">En attente</SelectItem>
+              <SelectItem value="paye">Payé</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* BL List */}
+      <DataTable
+        columns={blColumns}
+        data={filteredBLs}
+        emptyMessage="Aucune vente enregistrée"
+      />
+
+      {/* Payment Dialog */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif">Régler le BL {selectedBL?.number}</DialogTitle>
+          </DialogHeader>
+          {selectedBL && (
+            <form onSubmit={handlePayment} className="space-y-4">
+              <div className="p-3 rounded-lg bg-secondary/30">
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Client:</span>
+                    <p className="font-medium">{clients.find(c => c.id === selectedBL.clientId)?.name}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Montant TTC:</span>
+                    <p className="font-semibold text-primary">{formatNumber(selectedBL.montantTTC)} DT</p>
+                  </div>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Date de règlement *</Label>
+                <Input
+                  type="date"
+                  value={paymentForm.date}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Mode de paiement *</Label>
+                <Select
+                  value={paymentForm.modePayment}
+                  onValueChange={(value) => setPaymentForm({ ...paymentForm, modePayment: value as PaymentMode })}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="especes">
+                      <div className="flex items-center gap-2">
+                        <Wallet className="h-4 w-4" />
+                        Espèces
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="virement">
+                      <div className="flex items-center gap-2">
+                        <CreditCard className="h-4 w-4" />
+                        Virement
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="compensation">
+                      <div className="flex items-center gap-2">
+                        <ArrowRightLeft className="h-4 w-4" />
+                        Compensation
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Référence</Label>
+                <Input
+                  value={paymentForm.reference}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, reference: e.target.value })}
+                  placeholder="N° chèque, virement..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Observations</Label>
+                <Textarea
+                  value={paymentForm.observations}
+                  onChange={(e) => setPaymentForm({ ...paymentForm, observations: e.target.value })}
+                  placeholder="Notes supplémentaires..."
+                  rows={2}
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
+                  Annuler
+                </Button>
+                <Button type="submit">Confirmer le paiement</Button>
+              </div>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+    </MainLayout>
+  );
+}
