@@ -6,6 +6,7 @@ import {
   FileText, 
   Factory, 
   Database, 
+  ShoppingCart,
   CreditCard,
   Settings,
   Droplets
@@ -17,6 +18,7 @@ const navItems = [
   { path: '/bons-reception', label: 'Bons de Réception', icon: FileText },
   { path: '/trituration', label: 'Trituration', icon: Factory },
   { path: '/stock', label: 'Stock', icon: Database },
+  { path: '/vente', label: 'Vente', icon: ShoppingCart },
   { path: '/paiement', label: 'Paiement', icon: CreditCard },
   { path: '/parametres', label: 'Paramètres', icon: Settings },
 ];

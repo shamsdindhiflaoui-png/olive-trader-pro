@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Client, BonReception, Trituration, Reservoir, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment, InvoiceSource, ClientOperation, PaymentReceipt, PaymentReceiptLine, PaymentMode } from '@/types';
+import { Client, BonReception, Trituration, Reservoir, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment, InvoiceSource, ClientOperation, PaymentReceipt, PaymentReceiptLine, PaymentMode, BLPayment } from '@/types';
 
 interface AppState {
   clients: Client[];
@@ -42,6 +42,7 @@ interface AppState {
   
   // Sales actions
   addSale: (sale: { clientId: string; reservoirId: string; quantite: number; prixUnitaire: number; tauxTVA: number; droitTimbre: number; date: Date }) => BonLivraison | null;
+  updateBLPayment: (blId: string, payment: BLPayment) => boolean;
   
   // Invoice actions
   addInvoiceFromBR: (data: { brId: string; date: Date; echeance: Date; prixUnitaire: number; tauxTVA: number; droitTimbre: number; observations?: string }) => Invoice | null;
@@ -291,6 +292,7 @@ export const useAppStore = create<AppState>()(
           montantTVA,
           montantTTC,
           invoiced: false,
+          paymentStatus: 'en_attente',
           createdAt: new Date(),
         };
         
@@ -325,6 +327,20 @@ export const useAppStore = create<AppState>()(
         return bl;
       },
       
+      updateBLPayment: (blId, payment) => {
+        const state = get();
+        const bl = state.bonsLivraison.find(b => b.id === blId);
+        if (!bl) return false;
+        
+        set((state) => ({
+          bonsLivraison: state.bonsLivraison.map(b => 
+            b.id === blId 
+              ? { ...b, paymentStatus: 'paye' as const, payment }
+              : b
+          ),
+        }));
+        return true;
+      },
       // Invoice from BR (Façon - service)
       addInvoiceFromBR: (data) => {
         const state = get();

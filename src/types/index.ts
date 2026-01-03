@@ -89,6 +89,15 @@ export interface StockMovement {
   createdAt: Date;
 }
 
+export type BLPaymentStatus = 'en_attente' | 'paye';
+
+export interface BLPayment {
+  date: Date;
+  modePayment: PaymentMode;
+  reference?: string;
+  observations?: string;
+}
+
 export interface BonLivraison {
   id: string;
   number: string;
@@ -103,7 +112,9 @@ export interface BonLivraison {
   montantHT: number;
   montantTVA: number;
   montantTTC: number;
-  invoiced?: boolean; // Track if BL has been invoiced
+  invoiced?: boolean;
+  paymentStatus: BLPaymentStatus;
+  payment?: BLPayment;
   createdAt: Date;
 }
 

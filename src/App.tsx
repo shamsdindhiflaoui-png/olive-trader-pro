@@ -8,6 +8,7 @@ import Clients from "./pages/Clients";
 import BonsReception from "./pages/BonsReception";
 import Trituration from "./pages/Trituration";
 import Stock from "./pages/Stock";
+import Vente from "./pages/Vente";
 import Paiement from "./pages/Paiement";
 import Parametres from "./pages/Parametres";
 import NotFound from "./pages/NotFound";
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/bons-reception" element={<BonsReception />} />
           <Route path="/trituration" element={<Trituration />} />
           <Route path="/stock" element={<Stock />} />
+          <Route path="/vente" element={<Vente />} />
           <Route path="/paiement" element={<Paiement />} />
           <Route path="/parametres" element={<Parametres />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
