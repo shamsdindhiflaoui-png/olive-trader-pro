@@ -32,14 +32,14 @@ const Parametres = () => {
       partHuilerieBawaza: Number(formData.partHuilerieBawaza),
     });
 
-    toast.success('Paramètres enregistrés avec succès');
+    toast.success('Paramètres enregistrés avec succès | تم حفظ الإعدادات بنجاح');
   };
 
   return (
     <MainLayout>
       <PageHeader 
-        title="Paramètres" 
-        description="Configurez les paramètres de votre huilerie"
+        title="Paramètres | الإعدادات" 
+        description="Configurez les paramètres de votre huilerie | إعدادات معصرتك"
       />
 
       <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
@@ -48,38 +48,38 @@ const Parametres = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-serif">
               <Building2 className="h-5 w-5 text-primary" />
-              Informations de l'huilerie
+              Informations de l'huilerie | معلومات المعصرة
             </CardTitle>
             <CardDescription>
-              Informations générales de votre établissement
+              Informations générales de votre établissement | المعلومات العامة لمؤسستك
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="companyName">Nom de l'huilerie</Label>
+              <Label htmlFor="companyName">Nom de l'huilerie | اسم المعصرة</Label>
               <Input
                 id="companyName"
                 value={formData.companyName}
                 onChange={(e) => setFormData({ ...formData, companyName: e.target.value })}
-                placeholder="Nom de votre huilerie"
+                placeholder="Nom de votre huilerie | اسم معصرتك"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="address">Adresse</Label>
+              <Label htmlFor="address">Adresse | العنوان</Label>
               <Input
                 id="address"
                 value={formData.address}
                 onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                placeholder="Adresse complète"
+                placeholder="Adresse complète | العنوان الكامل"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="phone">Téléphone</Label>
+              <Label htmlFor="phone">Téléphone | الهاتف</Label>
               <Input
                 id="phone"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                placeholder="Numéro de téléphone"
+                placeholder="Numéro de téléphone | رقم الهاتف"
               />
             </div>
           </CardContent>
@@ -90,16 +90,16 @@ const Parametres = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-serif">
               <CreditCard className="h-5 w-5 text-primary" />
-              Prix par défaut
+              Prix par défaut | الأسعار الافتراضية
             </CardTitle>
             <CardDescription>
-              Ces prix seront utilisés comme valeurs par défaut lors des paiements
+              Ces prix seront utilisés comme valeurs par défaut lors des paiements | هذه الأسعار ستستخدم كقيم افتراضية عند الدفع
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="prixFacon">Prix Façon (DT/kg d'olives)</Label>
+                <Label htmlFor="prixFacon">Prix Façon (DT/kg d'olives) | سعر الخدمة</Label>
                 <Input
                   id="prixFacon"
                   type="number"
@@ -109,11 +109,11 @@ const Parametres = () => {
                   placeholder="0.00"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Prix facturé au client par kg d'olives traitées
+                  Prix facturé au client par kg d'olives traitées | السعر المفوتر للحريف لكل كغ زيتون معالج
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="prixBase">Prix Achat à la base (DT/L)</Label>
+                <Label htmlFor="prixBase">Prix Achat à la base (DT/L) | سعر الشراء من المصدر</Label>
                 <Input
                   id="prixBase"
                   type="number"
@@ -123,7 +123,7 @@ const Parametres = () => {
                   placeholder="0.00"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Prix payé au client par litre d'huile obtenue
+                  Prix payé au client par litre d'huile obtenue | السعر المدفوع للحريف لكل لتر زيت
                 </p>
               </div>
             </div>
@@ -135,15 +135,15 @@ const Parametres = () => {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 font-serif">
               <Percent className="h-5 w-5 text-primary" />
-              Paramètres Bawaza
+              Paramètres Bawaza | إعدادات باوازا
             </CardTitle>
             <CardDescription>
-              Configuration du partage de l'huile pour les transactions Bawaza
+              Configuration du partage de l'huile pour les transactions Bawaza | إعدادات تقاسم الزيت لمعاملات باوازا
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              <Label htmlFor="partBawaza">Part de l'huilerie (%)</Label>
+              <Label htmlFor="partBawaza">Part de l'huilerie (%) | حصة المعصرة (%)</Label>
               <Input
                 id="partBawaza"
                 type="number"
@@ -154,7 +154,7 @@ const Parametres = () => {
                 placeholder="20"
               />
               <p className="text-xs text-muted-foreground">
-                Pourcentage de l'huile produite qui revient à l'huilerie (le reste revient au client)
+                Pourcentage de l'huile produite qui revient à l'huilerie (le reste revient au client) | نسبة الزيت المنتج التي تعود للمعصرة (الباقي للحريف)
               </p>
             </div>
           </CardContent>
@@ -163,7 +163,7 @@ const Parametres = () => {
         <div className="flex justify-end">
           <Button type="submit" size="lg">
             <SettingsIcon className="mr-2 h-4 w-4" />
-            Enregistrer les paramètres
+            Enregistrer les paramètres | حفظ الإعدادات
           </Button>
         </div>
       </form>

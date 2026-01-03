@@ -33,15 +33,15 @@ interface BRToPay {
 }
 
 const transactionTypeLabels: Record<TransactionType, string> = {
-  facon: 'Façon',
-  bawaza: 'Bawaza',
-  achat_base: 'Achat Base',
+  facon: 'Façon | خدمة',
+  bawaza: 'Bawaza | باوازا',
+  achat_base: 'Achat Base | شراء',
 };
 
 const paymentModeLabels: Record<PaymentMode, string> = {
-  especes: 'Espèces',
-  virement: 'Virement',
-  compensation: 'Compensation',
+  especes: 'Espèces | نقداً',
+  virement: 'Virement | تحويل',
+  compensation: 'Compensation | مقاصة',
 };
 
 export default function Paiement() {
@@ -160,8 +160,8 @@ export default function Paiement() {
   const openCreateDialog = () => {
     if (!selectedBRsInfo?.allSameClient) {
       toast({
-        title: "Erreur",
-        description: "Impossible de mélanger des clients différents dans un même reçu.",
+        title: "Erreur | خطأ",
+        description: "Impossible de mélanger des clients différents dans un même reçu. | لا يمكن خلط حرفاء مختلفين",
         variant: "destructive",
       });
       return;
@@ -185,8 +185,8 @@ export default function Paiement() {
     
     if (formData.prixUnitaire <= 0) {
       toast({
-        title: "Erreur",
-        description: "Le prix unitaire est obligatoire.",
+        title: "Erreur | خطأ",
+        description: "Le prix unitaire est obligatoire. | السعر الوحدوي إجباري",
         variant: "destructive",
       });
       return;
@@ -203,8 +203,8 @@ export default function Paiement() {
     
     if (receipt) {
       toast({
-        title: "Reçu créé",
-        description: `Le reçu ${receipt.number} a été créé avec succès.`,
+        title: "Reçu créé | تم إنشاء الوصل",
+        description: `Le reçu ${receipt.number} a été créé avec succès. | تم إنشاء الوصل بنجاح`,
       });
       setSelectedBRs([]);
       setIsCreateDialogOpen(false);
@@ -216,8 +216,8 @@ export default function Paiement() {
       });
     } else {
       toast({
-        title: "Erreur",
-        description: "Impossible de créer le reçu. Vérifiez les données.",
+        title: "Erreur | خطأ",
+        description: "Impossible de créer le reçu. Vérifiez les données. | تعذر إنشاء الوصل",
         variant: "destructive",
       });
     }
@@ -266,47 +266,47 @@ export default function Paiement() {
     },
     {
       key: 'brNumber',
-      header: 'N° BR',
+      header: 'N° BR | رقم الوصل',
       render: (br: BRToPay) => <span className="font-mono font-medium">{br.brNumber}</span>,
     },
     {
       key: 'brDate',
-      header: 'Date BR',
+      header: 'Date BR | التاريخ',
       render: (br: BRToPay) => format(new Date(br.brDate), 'dd/MM/yyyy', { locale: fr }),
     },
     {
       key: 'clientName',
-      header: 'Client',
+      header: 'Client | الحريف',
     },
     {
       key: 'transactionType',
-      header: 'Nature',
+      header: 'Nature | النوع',
       render: (br: BRToPay) => (
         <Badge variant="outline">{transactionTypeLabels[br.transactionType]}</Badge>
       ),
     },
     {
       key: 'poidsNet',
-      header: 'Poids Net (kg)',
+      header: 'Poids Net (kg) | الوزن الصافي',
       render: (br: BRToPay) => br.poidsNet.toLocaleString(),
     },
     {
       key: 'quantiteHuile',
-      header: 'Huile (L)',
+      header: 'Huile (L) | الزيت',
       render: (br: BRToPay) => br.quantiteHuile.toLocaleString(),
     },
     {
       key: 'isPaid',
-      header: 'Statut',
+      header: 'Statut | الحالة',
       render: (br: BRToPay) => br.isPaid ? (
         <Badge variant="default" className="bg-green-600">
           <CheckCircle2 className="h-3 w-3 mr-1" />
-          Payé
+          Payé | مدفوع
         </Badge>
       ) : (
         <Badge variant="secondary">
           <Clock className="h-3 w-3 mr-1" />
-          Non payé
+          Non payé | غير مدفوع
         </Badge>
       ),
     },
@@ -316,17 +316,17 @@ export default function Paiement() {
   const receiptColumns = [
     {
       key: 'number',
-      header: 'N° Reçu',
+      header: 'N° Reçu | رقم الوصل',
       render: (r: PaymentReceipt) => <span className="font-mono font-medium">{r.number}</span>,
     },
     {
       key: 'date',
-      header: 'Date',
+      header: 'Date | التاريخ',
       render: (r: PaymentReceipt) => format(new Date(r.date), 'dd/MM/yyyy', { locale: fr }),
     },
     {
       key: 'client',
-      header: 'Client',
+      header: 'Client | الحريف',
       render: (r: PaymentReceipt) => {
         const client = clients.find(c => c.id === r.clientId);
         return client?.name || '-';
@@ -334,24 +334,24 @@ export default function Paiement() {
     },
     {
       key: 'brCount',
-      header: 'Nb BR',
+      header: 'Nb BR | عدد الوصولات',
       render: (r: PaymentReceipt) => r.lines.length,
     },
     {
       key: 'totalMontant',
-      header: 'Montant Total',
+      header: 'Montant Total | المبلغ الإجمالي',
       render: (r: PaymentReceipt) => `${r.totalMontant.toFixed(3)} DT`,
     },
     {
       key: 'modePayment',
-      header: 'Mode',
+      header: 'Mode | الطريقة',
       render: (r: PaymentReceipt) => (
         <Badge variant="outline">{paymentModeLabels[r.modePayment]}</Badge>
       ),
     },
     {
       key: 'actions',
-      header: '',
+      header: 'Actions | إجراءات',
       render: (r: PaymentReceipt) => {
         const client = getClientForReceipt(r);
         return (
@@ -382,29 +382,29 @@ export default function Paiement() {
   return (
     <MainLayout>
       <PageHeader 
-        title="Paiement"
-        description="Gestion des règlements des bons de réception"
+        title="Paiement | الدفع"
+        description="Gestion des règlements des bons de réception | إدارة تسديد وصولات الاستلام"
       />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
         <StatCard
-          title="BR Non Payés"
+          title="BR Non Payés | غير مدفوعة"
           value={stats.unpaidCount}
           icon={<Clock className="h-5 w-5" />}
         />
         <StatCard
-          title="BR Payés"
+          title="BR Payés | مدفوعة"
           value={stats.paidCount}
           icon={<CheckCircle2 className="h-5 w-5" />}
         />
         <StatCard
-          title="Reçus Émis"
+          title="Reçus Émis | الوصولات الصادرة"
           value={stats.totalReceipts}
           icon={<Receipt className="h-5 w-5" />}
         />
         <StatCard
-          title="Total Réglé"
+          title="Total Réglé | إجمالي المدفوع"
           value={`${stats.totalPaid.toFixed(3)} DT`}
           icon={<Wallet className="h-5 w-5" />}
         />
@@ -413,13 +413,13 @@ export default function Paiement() {
       {/* Filters and Actions */}
       <div className="flex flex-wrap items-center gap-4 mb-4">
         <div className="flex items-center gap-2">
-          <Label>Client:</Label>
+          <Label>Client | الحريف:</Label>
           <Select value={filterClient} onValueChange={setFilterClient}>
             <SelectTrigger className="w-48">
-              <SelectValue placeholder="Tous" />
+              <SelectValue placeholder="Tous | الكل" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous les clients</SelectItem>
+              <SelectItem value="all">Tous les clients | كل الحرفاء</SelectItem>
               {uniqueClients.map(client => client && (
                 <SelectItem key={client.id} value={client.id}>{client.name}</SelectItem>
               ))}
@@ -428,15 +428,15 @@ export default function Paiement() {
         </div>
         
         <div className="flex items-center gap-2">
-          <Label>Statut:</Label>
+          <Label>Statut | الحالة:</Label>
           <Select value={filterStatus} onValueChange={setFilterStatus}>
             <SelectTrigger className="w-40">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Tous</SelectItem>
-              <SelectItem value="unpaid">Non payés</SelectItem>
-              <SelectItem value="paid">Payés</SelectItem>
+              <SelectItem value="all">Tous | الكل</SelectItem>
+              <SelectItem value="unpaid">Non payés | غير مدفوعة</SelectItem>
+              <SelectItem value="paid">Payés | مدفوعة</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -446,14 +446,14 @@ export default function Paiement() {
         {selectedBRs.length > 0 && selectedBRsInfo && (
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
-              {selectedBRs.length} BR sélectionné(s)
+              {selectedBRs.length} BR sélectionné(s) | محدد
               {!selectedBRsInfo.allSameClient && (
-                <span className="text-destructive ml-2">(clients différents!)</span>
+                <span className="text-destructive ml-2">(clients différents! | حرفاء مختلفين!)</span>
               )}
             </span>
             <Button onClick={openCreateDialog} disabled={!selectedBRsInfo.allSameClient}>
               <Receipt className="h-4 w-4 mr-2" />
-              Créer un reçu de règlement
+              Créer un reçu de règlement | إنشاء وصل تسديد
             </Button>
           </div>
         )}
@@ -461,22 +461,22 @@ export default function Paiement() {
 
       {/* BR List */}
       <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Liste des BR à payer</h3>
+        <h3 className="text-lg font-semibold mb-4">Liste des BR à payer | قائمة الوصولات للدفع</h3>
         <DataTable
           columns={brColumns}
           data={filteredBRs}
-          emptyMessage="Aucun BR fermé disponible"
+          emptyMessage="Aucun BR fermé disponible | لا توجد وصولات مغلقة متاحة"
         />
       </div>
 
 
       {/* Receipts History */}
       <div>
-        <h3 className="text-lg font-semibold mb-4">Historique des reçus</h3>
+        <h3 className="text-lg font-semibold mb-4">Historique des reçus | سجل الوصولات</h3>
         <DataTable
           columns={receiptColumns}
           data={paymentReceipts}
-          emptyMessage="Aucun reçu de règlement"
+          emptyMessage="Aucun reçu de règlement | لا توجد وصولات تسديد"
         />
       </div>
 
@@ -484,7 +484,7 @@ export default function Paiement() {
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Créer un reçu de règlement</DialogTitle>
+            <DialogTitle>Créer un reçu de règlement | إنشاء وصل تسديد</DialogTitle>
           </DialogHeader>
           
           {selectedBRsInfo && (
@@ -492,7 +492,7 @@ export default function Paiement() {
               <div className="p-3 bg-secondary/20 rounded-lg">
                 <p className="font-medium">{selectedBRsInfo.clientName}</p>
                 <p className="text-sm text-muted-foreground">
-                  {selectedBRs.length} BR sélectionné(s) - {transactionTypeLabels[selectedBRsInfo.transactionType]}
+                  {selectedBRs.length} BR sélectionné(s) | محدد - {transactionTypeLabels[selectedBRsInfo.transactionType]}
                 </p>
               </div>
 
@@ -500,8 +500,8 @@ export default function Paiement() {
                 <div>
                   <Label>
                     {selectedBRsInfo.transactionType === 'facon' 
-                      ? 'Prix trituration (DT/kg)' 
-                      : 'Prix de base (DT/L)'}
+                      ? 'Prix trituration (DT/kg) | سعر العصر' 
+                      : 'Prix de base (DT/L) | السعر الأساسي'}
                   </Label>
                   <Input
                     type="number"
@@ -511,7 +511,7 @@ export default function Paiement() {
                   />
                 </div>
                 <div>
-                  <Label>Date de règlement</Label>
+                  <Label>Date de règlement | تاريخ التسديد</Label>
                   <Input
                     type="date"
                     value={formData.date}
@@ -521,7 +521,7 @@ export default function Paiement() {
               </div>
 
               <div>
-                <Label>Mode de règlement</Label>
+                <Label>Mode de règlement | طريقة الدفع</Label>
                 <Select value={formData.modePayment} onValueChange={(v) => setFormData(prev => ({ ...prev, modePayment: v as PaymentMode }))}>
                   <SelectTrigger>
                     <SelectValue />
@@ -530,19 +530,19 @@ export default function Paiement() {
                     <SelectItem value="especes">
                       <div className="flex items-center gap-2">
                         <Wallet className="h-4 w-4" />
-                        Espèces
+                        Espèces | نقداً
                       </div>
                     </SelectItem>
                     <SelectItem value="virement">
                       <div className="flex items-center gap-2">
                         <CreditCard className="h-4 w-4" />
-                        Virement
+                        Virement | تحويل
                       </div>
                     </SelectItem>
                     <SelectItem value="compensation">
                       <div className="flex items-center gap-2">
                         <ArrowRightLeft className="h-4 w-4" />
-                        Compensation
+                        Compensation | مقاصة
                       </div>
                     </SelectItem>
                   </SelectContent>
@@ -550,18 +550,18 @@ export default function Paiement() {
               </div>
 
               <div>
-                <Label>Observations</Label>
+                <Label>Observations | ملاحظات</Label>
                 <Textarea
                   value={formData.observations}
                   onChange={(e) => setFormData(prev => ({ ...prev, observations: e.target.value }))}
-                  placeholder="Observations optionnelles..."
+                  placeholder="Observations optionnelles... | ملاحظات اختيارية..."
                 />
               </div>
 
               {/* Preview */}
               {previewAmounts && (
                 <div className="border rounded-lg p-4 space-y-2">
-                  <h4 className="font-medium text-sm">Aperçu du calcul</h4>
+                  <h4 className="font-medium text-sm">Aperçu du calcul | معاينة الحساب</h4>
                   {previewAmounts.lines.map((line, idx) => (
                     <div key={idx} className="flex justify-between text-sm">
                       <span>{line.brNumber}</span>
@@ -569,12 +569,12 @@ export default function Paiement() {
                     </div>
                   ))}
                   <div className="border-t pt-2 flex justify-between font-semibold">
-                    <span>Total</span>
+                    <span>Total | المجموع</span>
                     <span>{previewAmounts.total.toFixed(3)} DT</span>
                   </div>
                   {selectedBRsInfo.transactionType !== 'facon' && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      💡 Ce montant sera crédité au compte du client
+                      💡 Ce montant sera crédité au compte du client | سيضاف هذا المبلغ لحساب الحريف
                     </p>
                   )}
                 </div>
@@ -584,10 +584,10 @@ export default function Paiement() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
-              Annuler
+              Annuler | إلغاء
             </Button>
             <Button onClick={handleCreateReceipt}>
-              Valider le règlement
+              Valider le règlement | تأكيد التسديد
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -597,28 +597,28 @@ export default function Paiement() {
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>Détails du reçu</DialogTitle>
+            <DialogTitle>Détails du reçu | تفاصيل الوصل</DialogTitle>
           </DialogHeader>
           
           {selectedReceipt && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 text-sm">
                 <div>
-                  <p className="text-muted-foreground">N° Reçu</p>
+                  <p className="text-muted-foreground">N° Reçu | رقم الوصل</p>
                   <p className="font-mono font-medium">{selectedReceipt.number}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Date</p>
+                  <p className="text-muted-foreground">Date | التاريخ</p>
                   <p>{format(new Date(selectedReceipt.date), 'dd/MM/yyyy', { locale: fr })}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Client</p>
+                  <p className="text-muted-foreground">Client | الحريف</p>
                   <p className="font-medium">
                     {clients.find(c => c.id === selectedReceipt.clientId)?.name}
                   </p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">Mode de paiement</p>
+                  <p className="text-muted-foreground">Mode de paiement | طريقة الدفع</p>
                   <Badge variant="outline">{paymentModeLabels[selectedReceipt.modePayment]}</Badge>
                 </div>
               </div>
@@ -627,10 +627,10 @@ export default function Paiement() {
                 <table className="w-full text-sm">
                   <thead className="bg-muted">
                     <tr>
-                      <th className="text-left p-2">BR</th>
-                      <th className="text-right p-2">Qté</th>
-                      <th className="text-right p-2">P.U.</th>
-                      <th className="text-right p-2">Montant</th>
+                      <th className="text-left p-2">BR | الوصل</th>
+                      <th className="text-right p-2">Qté | الكمية</th>
+                      <th className="text-right p-2">P.U. | السعر</th>
+                      <th className="text-right p-2">Montant | المبلغ</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -650,7 +650,7 @@ export default function Paiement() {
                   </tbody>
                   <tfoot className="bg-muted font-semibold">
                     <tr>
-                      <td colSpan={3} className="p-2 text-right">Total</td>
+                      <td colSpan={3} className="p-2 text-right">Total | المجموع</td>
                       <td className="p-2 text-right">{selectedReceipt.totalMontant.toFixed(3)} DT</td>
                     </tr>
                   </tfoot>
@@ -659,7 +659,7 @@ export default function Paiement() {
 
               {selectedReceipt.observations && (
                 <div>
-                  <p className="text-muted-foreground text-sm">Observations</p>
+                  <p className="text-muted-foreground text-sm">Observations | ملاحظات</p>
                   <p className="text-sm">{selectedReceipt.observations}</p>
                 </div>
               )}
@@ -668,7 +668,7 @@ export default function Paiement() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
-              Fermer
+              Fermer | إغلاق
             </Button>
             {(() => {
               const client = getClientForReceipt(selectedReceipt);
@@ -676,7 +676,7 @@ export default function Paiement() {
                 <PDFDownloadButton
                   document={<PaymentReceiptPDF receipt={selectedReceipt} client={client} settings={settings} />}
                   fileName={`Recu_${selectedReceipt.number}.pdf`}
-                  label="Télécharger PDF"
+                  label="Télécharger PDF | تحميل PDF"
                   variant="default"
                   size="default"
                 />

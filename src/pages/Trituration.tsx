@@ -91,7 +91,7 @@ const Trituration = () => {
     if (!selectedBR) return;
 
     if (!formData.quantiteHuile || Number(formData.quantiteHuile) <= 0) {
-      toast.error('La quantité d\'huile obtenue est obligatoire');
+      toast.error("La quantité d'huile obtenue est obligatoire | كمية الزيت المنتج إجبارية");
       return;
     }
 
@@ -102,7 +102,7 @@ const Trituration = () => {
       observations: formData.observations || undefined,
     });
 
-    toast.success(`BR ${selectedBR.number} trituré avec succès`);
+    toast.success(`BR ${selectedBR.number} trituré avec succès | تم العصر بنجاح`);
     setSelectedBR(null);
     resetForm();
   };
@@ -177,37 +177,37 @@ const Trituration = () => {
   const columnsEnCours = [
     {
       key: 'date',
-      header: 'Date réception',
+      header: 'Date réception | تاريخ الاستلام',
       render: (br: BonReception) => format(new Date(br.date), 'dd/MM/yyyy', { locale: fr }),
     },
     {
       key: 'number',
-      header: 'N° BR',
+      header: 'N° BR | رقم الوصل',
       render: (br: BonReception) => <span className="font-medium">{br.number}</span>,
     },
     {
       key: 'client',
-      header: 'Client',
+      header: 'Client | الحريف',
       render: (br: BonReception) => getClient(br.clientId)?.name || '-',
     },
     {
       key: 'vehicle',
-      header: 'Véhicule',
+      header: 'Véhicule | المركبة',
       render: (br: BonReception) => br.vehicle || '-',
     },
     {
       key: 'poidsNet',
-      header: 'Poids Net (kg)',
+      header: 'Poids Net (kg) | الوزن الصافي',
       render: (br: BonReception) => `${br.poidsNet.toLocaleString()} kg`,
       className: 'text-right font-semibold',
     },
     {
       key: 'actions',
-      header: 'Actions',
+      header: 'Actions | إجراءات',
       render: (br: BonReception) => (
         <Button size="sm" variant="outline" onClick={() => setSelectedBR(br)}>
           <Droplets className="mr-1 h-3 w-3" />
-          Triturer
+          Triturer | عصر
         </Button>
       ),
       className: 'text-right',
@@ -217,17 +217,17 @@ const Trituration = () => {
   const columns = [
     {
       key: 'date',
-      header: 'Date',
+      header: 'Date | التاريخ',
       render: (trit: TriturationT) => format(new Date(trit.date), 'dd/MM/yyyy', { locale: fr }),
     },
     {
       key: 'brNumber',
-      header: 'N° BR',
+      header: 'N° BR | رقم الوصل',
       render: (trit: TriturationT) => getBR(trit.brId)?.number || '-',
     },
     {
       key: 'client',
-      header: 'Client',
+      header: 'Client | الحريف',
       render: (trit: TriturationT) => {
         const br = getBR(trit.brId);
         return br ? getClient(br.clientId)?.name || '-' : '-';
@@ -235,7 +235,7 @@ const Trituration = () => {
     },
     {
       key: 'poidsNet',
-      header: 'Olives (kg)',
+      header: 'Olives (kg) | الزيتون',
       render: (trit: TriturationT) => {
         const br = getBR(trit.brId);
         return br ? `${br.poidsNet.toLocaleString()} kg` : '-';
@@ -244,13 +244,13 @@ const Trituration = () => {
     },
     {
       key: 'quantiteHuile',
-      header: 'Huile (L)',
+      header: 'Huile (L) | الزيت',
       render: (trit: TriturationT) => `${trit.quantiteHuile.toLocaleString()} L`,
       className: 'text-right font-semibold text-primary',
     },
     {
       key: 'rendement',
-      header: 'Rendement',
+      header: 'Rendement | المردود',
       render: (trit: TriturationT) => {
         const br = getBR(trit.brId);
         if (!br || br.poidsNet === 0) return '-';
@@ -264,14 +264,14 @@ const Trituration = () => {
   return (
     <MainLayout>
       <PageHeader 
-        title="Trituration" 
-        description="Transformez les olives en huile et suivez l'historique"
+        title="Trituration | العصر" 
+        description="Transformez les olives en huile et suivez l'historique | حول الزيتون إلى زيت وتابع السجل"
       />
 
       <Tabs defaultValue="en-cours" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="en-cours">En cours ({openBRs.length})</TabsTrigger>
-          <TabsTrigger value="historique">Historique ({triturations.length})</TabsTrigger>
+          <TabsTrigger value="en-cours">En cours | قيد الانتظار ({openBRs.length})</TabsTrigger>
+          <TabsTrigger value="historique">Historique | السجل ({triturations.length})</TabsTrigger>
         </TabsList>
 
         {/* Onglet BR en attente */}
@@ -282,7 +282,7 @@ const Trituration = () => {
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div className="flex flex-wrap items-end gap-4">
                   <div className="space-y-2">
-                    <Label>Rechercher par N° BR</Label>
+                    <Label>Rechercher par N° BR | البحث برقم الوصل</Label>
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input
@@ -295,14 +295,14 @@ const Trituration = () => {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label>Filtrer par client</Label>
+                    <Label>Filtrer par client | التصفية حسب الحريف</Label>
                     <Select value={filterClientEnCours} onValueChange={setFilterClientEnCours}>
                       <SelectTrigger className="w-[220px]">
                         <User className="mr-2 h-4 w-4 text-muted-foreground" />
-                        <SelectValue placeholder="Tous les clients" />
+                        <SelectValue placeholder="Tous les clients | كل الحرفاء" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Tous les clients</SelectItem>
+                        <SelectItem value="all">Tous les clients | كل الحرفاء</SelectItem>
                         {clientsWithOpenBRs.map(client => (
                           <SelectItem key={client.id} value={client.id}>
                             {client.name}
@@ -313,14 +313,14 @@ const Trituration = () => {
                   </div>
                   {(searchBREnCours || filterClientEnCours !== 'all') && (
                     <Button variant="outline" onClick={resetFiltersEnCours}>
-                      Réinitialiser
+                      Réinitialiser | إعادة تعيين
                     </Button>
                   )}
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 border border-primary/20">
                     <Scale className="h-5 w-5 text-primary" />
-                    <span className="text-sm font-medium">Total en cours:</span>
+                    <span className="text-sm font-medium">Total en cours | الإجمالي:</span>
                     <span className="text-lg font-bold text-primary">{totalPoidsEnCours.toLocaleString()} kg</span>
                     <span className="text-sm text-muted-foreground">({filteredOpenBRs.length} BR)</span>
                   </div>
@@ -339,7 +339,7 @@ const Trituration = () => {
                         />
                       }
                       fileName={`BR-en-cours-${format(new Date(), 'yyyy-MM-dd')}.pdf`}
-                      label="Exporter PDF"
+                      label="Exporter PDF | تصدير PDF"
                     />
                   )}
                 </div>
@@ -350,7 +350,7 @@ const Trituration = () => {
           {/* Tableau des BR en cours */}
           <Card>
             <CardHeader>
-              <CardTitle className="font-serif">Bons de réception en attente de trituration</CardTitle>
+              <CardTitle className="font-serif">Bons de réception en attente de trituration | وصولات الاستلام في انتظار العصر</CardTitle>
             </CardHeader>
             <CardContent>
               <DataTable
@@ -358,8 +358,8 @@ const Trituration = () => {
                 data={filteredOpenBRs}
                 emptyMessage={
                   searchBREnCours || filterClientEnCours !== 'all'
-                    ? 'Aucun BR ne correspond à vos critères de recherche.'
-                    : 'Aucun BR en attente de trituration.'
+                    ? 'Aucun BR ne correspond à vos critères de recherche. | لا توجد نتائج مطابقة'
+                    : 'Aucun BR en attente de trituration. | لا توجد وصولات في الانتظار'
                 }
               />
             </CardContent>
@@ -373,13 +373,13 @@ const Trituration = () => {
             <CardHeader className="pb-4">
               <CardTitle className="font-serif text-lg flex items-center gap-2">
                 <Filter className="h-5 w-5" />
-                Filtrer par date
+                Filtrer par date | التصفية حسب التاريخ
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="flex flex-wrap items-end gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="searchBR">Rechercher par N° BR</Label>
+                  <Label htmlFor="searchBR">Rechercher par N° BR | البحث برقم الوصل</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -393,7 +393,7 @@ const Trituration = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dateDebut">Date début</Label>
+                  <Label htmlFor="dateDebut">Date début | تاريخ البداية</Label>
                   <Input
                     id="dateDebut"
                     type="date"
@@ -403,7 +403,7 @@ const Trituration = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dateFin">Date fin</Label>
+                  <Label htmlFor="dateFin">Date fin | تاريخ النهاية</Label>
                   <Input
                     id="dateFin"
                     type="date"
@@ -413,7 +413,7 @@ const Trituration = () => {
                   />
                 </div>
                 <Button variant="outline" onClick={resetFilters}>
-                  Réinitialiser
+                  Réinitialiser | إعادة تعيين
                 </Button>
               </div>
             </CardContent>
@@ -422,41 +422,41 @@ const Trituration = () => {
           {/* Statistiques */}
           <div className="grid gap-4 md:grid-cols-4">
             <StatCard
-              title="Olives traitées"
+              title="Olives traitées | الزيتون المعالج"
               value={`${stats.totalOlivesKg.toLocaleString()} kg`}
               icon={Scale}
-              subtitle={dateDebut || dateFin ? 'Période filtrée' : 'Total'}
+              subtitle={dateDebut || dateFin ? 'Période filtrée | فترة محددة' : 'Total | الإجمالي'}
             />
             <StatCard
-              title="Huile obtenue"
+              title="Huile obtenue | الزيت المنتج"
               value={`${stats.totalHuileLitres.toLocaleString()} L`}
               icon={Droplets}
-              subtitle={dateDebut || dateFin ? 'Période filtrée' : 'Total'}
+              subtitle={dateDebut || dateFin ? 'Période filtrée | فترة محددة' : 'Total | الإجمالي'}
             />
             <StatCard
-              title="Rendement moyen"
+              title="Rendement moyen | المردود المتوسط"
               value={`${stats.rendementMoyen.toFixed(1)}%`}
               icon={Factory}
-              subtitle="Huile / Olives"
+              subtitle="Huile / Olives | الزيت / الزيتون"
             />
             <StatCard
-              title="Triturations"
+              title="Triturations | العصرات"
               value={stats.nombreTriturations.toString()}
               icon={Calendar}
-              subtitle={dateDebut || dateFin ? 'Période filtrée' : 'Total'}
+              subtitle={dateDebut || dateFin ? 'Période filtrée | فترة محددة' : 'Total | الإجمالي'}
             />
           </div>
 
           {/* Tableau historique */}
           <Card>
             <CardHeader>
-              <CardTitle className="font-serif">Historique des triturations</CardTitle>
+              <CardTitle className="font-serif">Historique des triturations | سجل العصرات</CardTitle>
             </CardHeader>
             <CardContent>
               <DataTable
                 columns={columns}
                 data={filteredTriturations}
-                emptyMessage="Aucune trituration enregistrée pour cette période"
+                emptyMessage="Aucune trituration enregistrée pour cette période | لا توجد عصرات مسجلة لهذه الفترة"
               />
             </CardContent>
           </Card>
@@ -468,31 +468,31 @@ const Trituration = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-serif">
-              Trituration - {selectedBR?.number}
+              Trituration | العصر - {selectedBR?.number}
             </DialogTitle>
             <DialogDescription>
-              Enregistrez la quantité d'huile obtenue pour ce bon de réception.
+              Enregistrez la quantité d'huile obtenue pour ce bon de réception. | سجل كمية الزيت المنتج لهذا الوصل.
             </DialogDescription>
           </DialogHeader>
           {selectedBR && (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="p-4 rounded-lg bg-muted space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Client</span>
+                  <span className="text-muted-foreground">Client | الحريف</span>
                   <span className="font-medium">{getClient(selectedBR.clientId)?.name}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Poids Net Olives</span>
+                  <span className="text-muted-foreground">Poids Net Olives | الوزن الصافي</span>
                   <span className="font-semibold text-primary">{selectedBR.poidsNet.toLocaleString()} kg</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Date Réception</span>
+                  <span className="text-muted-foreground">Date Réception | تاريخ الاستلام</span>
                   <span>{format(new Date(selectedBR.date), 'dd MMM yyyy', { locale: fr })}</span>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tritDate">Date de trituration *</Label>
+                <Label htmlFor="tritDate">Date de trituration * | تاريخ العصر *</Label>
                 <Input
                   id="tritDate"
                   type="date"
@@ -502,7 +502,7 @@ const Trituration = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="quantiteHuile">Quantité d'huile obtenue (litres) *</Label>
+                <Label htmlFor="quantiteHuile">Quantité d'huile obtenue (litres) * | كمية الزيت المنتج *</Label>
                 <Input
                   id="quantiteHuile"
                   type="number"
@@ -513,29 +513,29 @@ const Trituration = () => {
                 />
                 {formData.quantiteHuile && selectedBR.poidsNet > 0 && (
                   <p className="text-sm text-muted-foreground">
-                    Rendement: {((Number(formData.quantiteHuile) / selectedBR.poidsNet) * 100).toFixed(1)}%
+                    Rendement | المردود: {((Number(formData.quantiteHuile) / selectedBR.poidsNet) * 100).toFixed(1)}%
                   </p>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="tritObservations">Observations</Label>
+                <Label htmlFor="tritObservations">Observations | ملاحظات</Label>
                 <Textarea
                   id="tritObservations"
                   value={formData.observations}
                   onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-                  placeholder="Notes sur la trituration..."
+                  placeholder="Notes sur la trituration... | ملاحظات حول العصر..."
                   rows={2}
                 />
               </div>
 
               <div className="flex justify-end gap-3 pt-4">
                 <Button type="button" variant="outline" onClick={() => setSelectedBR(null)}>
-                  Annuler
+                  Annuler | إلغاء
                 </Button>
                 <Button type="submit">
                   <Droplets className="mr-2 h-4 w-4" />
-                  Valider la trituration
+                  Valider la trituration | تأكيد العصر
                 </Button>
               </div>
             </form>

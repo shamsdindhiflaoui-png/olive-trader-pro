@@ -32,19 +32,19 @@ const Dashboard = () => {
   const brColumns = [
     { 
       key: 'number', 
-      header: 'N° BR',
+      header: 'N° BR | رقم الوصل',
       render: (br: typeof bonsReception[0]) => (
         <span className="font-medium text-primary">{br.number}</span>
       )
     },
     { 
       key: 'date', 
-      header: 'Date',
+      header: 'Date | التاريخ',
       render: (br: typeof bonsReception[0]) => format(new Date(br.date), 'dd MMM yyyy', { locale: fr })
     },
     { 
       key: 'client', 
-      header: 'Client',
+      header: 'Client | الحريف',
       render: (br: typeof bonsReception[0]) => {
         const client = clients.find(c => c.id === br.clientId);
         return client?.name || '-';
@@ -52,12 +52,12 @@ const Dashboard = () => {
     },
     { 
       key: 'poidsNet', 
-      header: 'Poids Net',
+      header: 'Poids Net | الوزن الصافي',
       render: (br: typeof bonsReception[0]) => `${br.poidsNet.toLocaleString()} kg`
     },
     { 
       key: 'status', 
-      header: 'Statut',
+      header: 'Statut | الحالة',
       render: (br: typeof bonsReception[0]) => (
         <StatusBadge status={br.status} />
       )
@@ -67,35 +67,35 @@ const Dashboard = () => {
   return (
     <MainLayout>
       <PageHeader 
-        title="Tableau de bord" 
-        description="Vue d'ensemble de votre huilerie"
+        title="Tableau de bord | لوحة القيادة" 
+        description="Vue d'ensemble de votre huilerie | نظرة عامة على معصرتك"
       />
 
       {/* Stats Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
         <StatCard
-          title="Clients"
+          title="Clients | الحرفاء"
           value={clients.length}
-          subtitle="Total enregistrés"
+          subtitle="Total enregistrés | إجمالي المسجلين"
           icon={Users}
         />
         <StatCard
-          title="BR Ouverts"
+          title="BR Ouverts | وصولات مفتوحة"
           value={openBRs.length}
-          subtitle="En attente de trituration"
+          subtitle="En attente de trituration | في انتظار العصر"
           icon={Clock}
           variant="accent"
         />
         <StatCard
-          title="Huile Produite"
+          title="Huile Produite | الزيت المنتج"
           value={`${formatNumber(totalHuile)} L`}
-          subtitle="Total trituré"
+          subtitle="Total trituré | إجمالي المعصور"
           icon={Droplets}
         />
         <StatCard
-          title="Stock Disponible"
+          title="Stock Disponible | المخزون المتاح"
           value={`${formatNumber(stockTotal)} L`}
-          subtitle={`${reservoirs.length} réservoirs`}
+          subtitle={`${reservoirs.length} réservoirs | خزانات`}
           icon={Database}
         />
       </div>
@@ -109,7 +109,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold font-serif">{bonsReception.length}</p>
-              <p className="text-sm text-muted-foreground">Bons de réception total</p>
+              <p className="text-sm text-muted-foreground">Bons de réception total | إجمالي وصولات الاستلام</p>
             </div>
           </div>
         </div>
@@ -120,7 +120,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold font-serif">{closedBRs.length}</p>
-              <p className="text-sm text-muted-foreground">BR traités</p>
+              <p className="text-sm text-muted-foreground">BR traités | وصولات معالجة</p>
             </div>
           </div>
         </div>
@@ -131,7 +131,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold font-serif">{unpaidInvoices.length}</p>
-              <p className="text-sm text-muted-foreground">Factures en attente</p>
+              <p className="text-sm text-muted-foreground">Factures en attente | فواتير معلقة</p>
             </div>
           </div>
         </div>
@@ -139,18 +139,18 @@ const Dashboard = () => {
 
       {/* Recent BRs */}
       <div className="mb-8">
-        <h2 className="font-serif text-xl font-semibold mb-4">Derniers Bons de Réception</h2>
+        <h2 className="font-serif text-xl font-semibold mb-4">Derniers Bons de Réception | آخر وصولات الاستلام</h2>
         <DataTable
           columns={brColumns}
           data={recentBRs}
-          emptyMessage="Aucun bon de réception"
+          emptyMessage="Aucun bon de réception | لا توجد وصولات استلام"
         />
       </div>
 
       {/* Reservoirs Status */}
       {reservoirs.length > 0 && (
         <div>
-          <h2 className="font-serif text-xl font-semibold mb-4">État des Réservoirs</h2>
+          <h2 className="font-serif text-xl font-semibold mb-4">État des Réservoirs | حالة الخزانات</h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {reservoirs.map((reservoir) => {
               const fillPercentage = (reservoir.quantiteActuelle / reservoir.capaciteMax) * 100;
