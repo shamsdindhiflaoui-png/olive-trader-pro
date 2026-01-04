@@ -42,6 +42,7 @@ interface AppState {
   
   // Trituration actions
   addTrituration: (trituration: Omit<Trituration, 'id' | 'createdAt'>) => void;
+  updateTrituration: (brId: string, data: Partial<Trituration>) => void;
   
   // Reservoir actions
   addReservoir: (reservoir: Omit<Reservoir, 'id' | 'createdAt'>) => void;
@@ -257,6 +258,12 @@ export const useAppStore = create<AppState>()(
         }));
         get().closeBR(tritData.brId);
       },
+      
+      updateTrituration: (brId, data) => set((state) => ({
+        triturations: state.triturations.map(t => 
+          t.brId === brId ? { ...t, ...data } : t
+        )
+      })),
       
       // Reservoir actions
       addReservoir: (reservoirData) => set((state) => ({
@@ -643,12 +650,16 @@ export const useAppStore = create<AppState>()(
           if (!trituration) return null;
           
           let montant: number;
+          let prixUtilise: number;
+          
           if (br.nature === 'service') {
             // Service: based on weight (kg) - client pays mill
-            montant = br.poidsNet * data.prixUnitaire;
+            prixUtilise = data.prixUnitaire;
+            montant = br.poidsNet * prixUtilise;
           } else {
-            // Bawaz: based on oil quantity - mill pays client
-            montant = trituration.quantiteHuile * data.prixUnitaire;
+            // Bawaz: use predefined price from trituration - mill pays client
+            prixUtilise = trituration.prixHuileKg || data.prixUnitaire;
+            montant = trituration.quantiteHuile * prixUtilise;
           }
           
           brList.push({
@@ -657,7 +668,7 @@ export const useAppStore = create<AppState>()(
             brDate: br.date,
             poidsNet: br.poidsNet,
             quantiteHuile: trituration.quantiteHuile,
-            prixUnitaire: data.prixUnitaire,
+            prixUnitaire: prixUtilise,
             montant,
           });
         }

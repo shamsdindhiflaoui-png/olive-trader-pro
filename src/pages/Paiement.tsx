@@ -30,6 +30,8 @@ interface BRToPay {
   nature: BRNature;
   poidsNet: number;
   quantiteHuile: number;
+  prixHuileKg?: number; // Prix pré-défini lors de l'affectation stock (pour bawaz)
+  isAffectedToStock: boolean; // BR affecté au stock
   isPaid: boolean;
 }
 
@@ -52,7 +54,7 @@ export default function Paiement() {
     virement: t('Virement', 'تحويل'),
     compensation: t('Compensation', 'مقاصة'),
   };
-  const { bonsReception, triturations, clients, paymentReceipts, settings, addPaymentReceipt } = useAppStore();
+  const { bonsReception, triturations, clients, paymentReceipts, settings, addPaymentReceipt, stockAffectations } = useAppStore();
 
   const getClientForReceipt = (receipt: PaymentReceipt | null) => {
     if (!receipt) return null;
@@ -89,6 +91,9 @@ export default function Paiement() {
           pr.lines.some(line => line.brId === br.id)
         );
         
+        // Check if affected to stock
+        const isAffectedToStock = stockAffectations.some(sa => sa.brId === br.id);
+        
         if (!trituration || !client) return null;
         
         return {
@@ -97,20 +102,28 @@ export default function Paiement() {
           brDate: br.date,
           clientId: br.clientId,
           clientName: client.name,
-          nature: br.nature,
+          nature: br.nature || 'service',
           poidsNet: br.poidsNet,
           quantiteHuile: trituration.quantiteHuile,
+          prixHuileKg: trituration.prixHuileKg, // Prix défini lors de l'affectation
+          isAffectedToStock,
           isPaid,
         } as BRToPay;
       })
       .filter(Boolean) as BRToPay[];
-  }, [bonsReception, triturations, clients, paymentReceipts]);
+  }, [bonsReception, triturations, clients, paymentReceipts, stockAffectations]);
 
-  // Filter BRs by active tab (nature) and other filters
+  // Filter BRs: 
+  // - Service: show all closed BRs
+  // - Bawaz: show only BRs that are affected to stock (with price defined)
   const filteredBRs = useMemo(() => {
     return brsWithTrituration.filter(br => {
       // Filter by nature (tab)
       if (br.nature !== activeTab) return false;
+      
+      // For bawaz, only show BRs that are affected to stock
+      if (br.nature === 'bawaz' && !br.isAffectedToStock) return false;
+      
       if (filterClient !== 'all' && br.clientId !== filterClient) return false;
       if (filterStatus === 'unpaid' && br.isPaid) return false;
       if (filterStatus === 'paid' && !br.isPaid) return false;
@@ -209,19 +222,40 @@ export default function Paiement() {
   const handleCreateReceipt = () => {
     if (!selectedBRsInfo) return;
     
-    if (formData.prixUnitaire <= 0) {
-      toast({
-        title: t("Erreur", "خطأ"),
-        description: t("Le prix unitaire est obligatoire.", "السعر الوحدوي إجباري."),
-        variant: "destructive",
-      });
-      return;
+    // For service: validate form price
+    // For bawaz: validate predefined prices exist
+    if (selectedBRsInfo.nature === 'service') {
+      if (formData.prixUnitaire <= 0) {
+        toast({
+          title: t("Erreur", "خطأ"),
+          description: t("Le prix unitaire est obligatoire.", "السعر الوحدوي إجباري."),
+          variant: "destructive",
+        });
+        return;
+      }
+    } else {
+      // Bawaz: check all selected BRs have predefined prices
+      const selectedItems = filteredBRs.filter(br => selectedBRs.includes(br.id) && !br.isPaid);
+      const missingPrice = selectedItems.some(br => !br.prixHuileKg || br.prixHuileKg <= 0);
+      if (missingPrice) {
+        toast({
+          title: t("Erreur", "خطأ"),
+          description: t("Certains BR n'ont pas de prix défini. Veuillez affecter l'huile au stock d'abord.", "بعض الوصولات ليس لها سعر محدد. يرجى تخصيص الزيت للمخزون أولاً."),
+          variant: "destructive",
+        });
+        return;
+      }
     }
+    
+    // For bawaz, we need to pass prices per BR
+    const prixUnitaire = selectedBRsInfo.nature === 'service' 
+      ? formData.prixUnitaire 
+      : 0; // Will be calculated per BR in store
     
     const receipt = addPaymentReceipt({
       clientId: selectedBRsInfo.clientId,
       brIds: selectedBRs,
-      prixUnitaire: formData.prixUnitaire,
+      prixUnitaire,
       modePayment: formData.modePayment,
       date: new Date(formData.date),
       observations: formData.observations || undefined,
@@ -256,20 +290,35 @@ export default function Paiement() {
 
   // Calculate preview amounts
   const previewAmounts = useMemo(() => {
-    if (!selectedBRsInfo || formData.prixUnitaire <= 0) return null;
+    if (!selectedBRsInfo) return null;
     
     const selectedItems = filteredBRs.filter(br => selectedBRs.includes(br.id) && !br.isPaid);
     
+    // For bawaz, use the predefined price per BR
+    // For service, use the form price
     const lines = selectedItems.map(br => {
-      const amount = selectedBRsInfo.nature === 'service'
-        ? br.poidsNet * formData.prixUnitaire
-        : br.quantiteHuile * formData.prixUnitaire;
-      return { brNumber: br.brNumber, amount };
+      let amount: number;
+      let priceUsed: number;
+      
+      if (br.nature === 'bawaz' && br.prixHuileKg) {
+        // Bawaz: use predefined price * oil quantity
+        priceUsed = br.prixHuileKg;
+        amount = br.quantiteHuile * priceUsed;
+      } else {
+        // Service: use form price * weight
+        priceUsed = formData.prixUnitaire;
+        amount = br.poidsNet * priceUsed;
+      }
+      
+      return { brNumber: br.brNumber, amount, priceUsed, quantite: br.nature === 'bawaz' ? br.quantiteHuile : br.poidsNet };
     });
     
     const total = lines.reduce((sum, line) => sum + line.amount, 0);
+    const isValid = selectedBRsInfo.nature === 'bawaz' 
+      ? selectedItems.every(br => br.prixHuileKg && br.prixHuileKg > 0)
+      : formData.prixUnitaire > 0;
     
-    return { lines, total };
+    return { lines, total, isValid };
   }, [selectedBRs, selectedBRsInfo, formData.prixUnitaire, filteredBRs]);
 
   // BR columns
@@ -321,7 +370,21 @@ export default function Paiement() {
     {
       key: 'quantiteHuile',
       header: t('Huile (L)', 'الزيت (ل)'),
-      render: (br: BRToPay) => br.quantiteHuile.toLocaleString(),
+      render: (br: BRToPay) => br.quantiteHuile.toLocaleString('fr-FR', { minimumFractionDigits: 3 }),
+    },
+    {
+      key: 'prixHuileKg',
+      header: t('Prix/Kg', 'السعر/كغ'),
+      render: (br: BRToPay) => {
+        if (br.nature === 'bawaz' && br.prixHuileKg) {
+          return (
+            <span className="font-medium text-orange-600">
+              {br.prixHuileKg.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT
+            </span>
+          );
+        }
+        return <span className="text-muted-foreground">-</span>;
+      },
     },
     {
       key: 'isPaid',
@@ -560,29 +623,72 @@ export default function Paiement() {
                 </Badge>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>
-                    {selectedBRsInfo.nature === 'service' 
-                      ? t('Prix trituration (DT/kg)', 'سعر العصر (د.ت/كغ)') 
-                      : t('Prix huile (DT/L)', 'سعر الزيت (د.ت/ل)')}
-                  </Label>
-                  <Input
-                    type="number"
-                    step="0.001"
-                    value={formData.prixUnitaire}
-                    onChange={(e) => setFormData(prev => ({ ...prev, prixUnitaire: parseFloat(e.target.value) || 0 }))}
-                  />
+              {/* For Service: show price input */}
+              {selectedBRsInfo.nature === 'service' && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>{t('Prix trituration (DT/kg)', 'سعر العصر (د.ت/كغ)')}</Label>
+                    <Input
+                      type="number"
+                      step="0.001"
+                      value={formData.prixUnitaire}
+                      onChange={(e) => setFormData(prev => ({ ...prev, prixUnitaire: parseFloat(e.target.value) || 0 }))}
+                    />
+                  </div>
+                  <div>
+                    <Label>{t('Date de règlement', 'تاريخ التسديد')}</Label>
+                    <Input
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <Label>{t('Date de règlement', 'تاريخ التسديد')}</Label>
-                  <Input
-                    type="date"
-                    value={formData.date}
-                    onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
-                  />
+              )}
+
+              {/* For Bawaz: show details with predefined prices */}
+              {selectedBRsInfo.nature === 'bawaz' && (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-lg border-2 border-orange-200 bg-orange-50">
+                    <h4 className="font-medium text-orange-800 mb-2">
+                      💸 {t('Détails des BR Bawaz', 'تفاصيل وصولات الباواز')}
+                    </h4>
+                    <p className="text-xs text-orange-700 mb-3">
+                      {t('Les prix ont été définis lors de l\'affectation au stock', 'تم تحديد الأسعار عند تخصيص المخزون')}
+                    </p>
+                    
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                      {filteredBRs.filter(br => selectedBRs.includes(br.id) && !br.isPaid).map(br => (
+                        <div key={br.id} className="flex justify-between items-center text-sm bg-white p-2 rounded">
+                          <div>
+                            <span className="font-mono font-medium">{br.brNumber}</span>
+                            <span className="text-muted-foreground ml-2">
+                              {br.quantiteHuile.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L
+                            </span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-orange-600 font-medium">
+                              {br.prixHuileKg?.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT/kg
+                            </span>
+                            <span className="text-muted-foreground ml-2">
+                              = {((br.prixHuileKg || 0) * br.quantiteHuile).toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <Label>{t('Date de règlement', 'تاريخ التسديد')}</Label>
+                    <Input
+                      type="date"
+                      value={formData.date}
+                      onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <Label>{t('Mode de règlement', 'طريقة الدفع')}</Label>
@@ -623,27 +729,32 @@ export default function Paiement() {
               </div>
 
               {/* Preview */}
-              {previewAmounts && (
+              {previewAmounts && previewAmounts.isValid && (
                 <div className="border rounded-lg p-4 space-y-2">
                   <h4 className="font-medium text-sm">{t('Aperçu du calcul', 'معاينة الحساب')}</h4>
                   {previewAmounts.lines.map((line, idx) => (
                     <div key={idx} className="flex justify-between text-sm">
                       <span>{line.brNumber}</span>
-                      <span>{line.amount.toFixed(3)} DT</span>
+                      <span className="text-muted-foreground">
+                        {line.quantite.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} × {line.priceUsed.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} = 
+                      </span>
+                      <span className="font-medium">{line.amount.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT</span>
                     </div>
                   ))}
-                  <div className="border-t pt-2 flex justify-between font-semibold">
+                  <div className="border-t pt-2 flex justify-between font-semibold text-lg">
                     <span>{t('Total', 'المجموع')}</span>
-                    <span>{previewAmounts.total.toFixed(3)} DT</span>
+                    <span className={selectedBRsInfo.nature === 'bawaz' ? 'text-orange-600' : 'text-green-600'}>
+                      {previewAmounts.total.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT
+                    </span>
                   </div>
                   {selectedBRsInfo.nature === 'bawaz' && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      💸 {t('Ce montant sera payé par l\'huilerie au client', 'سيدفع هذا المبلغ من المعصرة للحريف')}
+                    <p className="text-xs text-orange-700 mt-2 p-2 bg-orange-50 rounded">
+                      💸 {t("Ce montant sera payé par l'huilerie au client", 'سيدفع هذا المبلغ من المعصرة للحريف')}
                     </p>
                   )}
                   {selectedBRsInfo.nature === 'service' && (
-                    <p className="text-xs text-muted-foreground mt-2">
-                      💰 {t('Ce montant sera encaissé par l\'huilerie', 'سيتم تحصيل هذا المبلغ من طرف المعصرة')}
+                    <p className="text-xs text-green-700 mt-2 p-2 bg-green-50 rounded">
+                      💰 {t("Ce montant sera encaissé par l'huilerie", 'سيتم تحصيل هذا المبلغ من طرف المعصرة')}
                     </p>
                   )}
                 </div>
