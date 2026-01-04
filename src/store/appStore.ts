@@ -35,7 +35,7 @@ interface AppState {
   getDeletedOperations: (clientId?: string) => DeletedOperation[];
   
   // BR actions
-  addBR: (br: Omit<BonReception, 'id' | 'number' | 'poidsNet' | 'status' | 'createdAt'>) => void;
+  addBR: (br: Omit<BonReception, 'id' | 'number' | 'poidsNet' | 'status' | 'createdAt'>) => BonReception;
   getBRCountByNature: (nature: 'service' | 'bawaz') => number;
   updateBR: (id: string, br: Partial<BonReception>) => void;
   closeBR: (id: string) => void;
@@ -211,23 +211,28 @@ export const useAppStore = create<AppState>()(
         return state.bonsReception.filter(br => br.nature === nature).length;
       },
       
-      addBR: (brData) => set((state) => {
+      addBR: (brData) => {
+        const state = get();
         // Generate number based on nature: S for Service, B for Bawaz
         const prefix = brData.nature === 'service' ? 'S' : 'B';
         const count = state.bonsReception.filter(br => br.nature === brData.nature).length;
         const number = `${prefix}${String(count + 1).padStart(4, '0')}`;
         
-        return {
-          bonsReception: [...state.bonsReception, {
-            ...brData,
-            id: generateId(),
-            number,
-            poidsNet: brData.poidsPlein - brData.poidsVide,
-            status: 'open',
-            createdAt: new Date(),
-          }]
+        const newBR: BonReception = {
+          ...brData,
+          id: generateId(),
+          number,
+          poidsNet: brData.poidsPlein - brData.poidsVide,
+          status: 'open',
+          createdAt: new Date(),
         };
-      }),
+        
+        set((state) => ({
+          bonsReception: [...state.bonsReception, newBR]
+        }));
+        
+        return newBR;
+      },
       
       updateBR: (id, brData) => set((state) => ({
         bonsReception: state.bonsReception.map(br => 

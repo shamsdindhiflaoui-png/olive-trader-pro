@@ -24,12 +24,14 @@ import {
 import { useAppStore } from '@/store/appStore';
 import { useLanguageStore } from '@/store/languageStore';
 import { BonReception, BRNature } from '@/types';
-import { Plus, Eye } from 'lucide-react';
+import { Plus, Eye, Printer } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
 import { BonReceptionPDF } from '@/components/pdf/BonReceptionPDF';
+import { BREtiquettePDF } from '@/components/pdf/BREtiquettePDF';
+import { pdf } from '@react-pdf/renderer';
 
 const natureLabels = {
   service: { fr: 'Service', ar: 'خدمة' },
@@ -69,7 +71,31 @@ const BonsReception = () => {
     ? Number(formData.poidsPlein) - Number(formData.poidsVide) 
     : 0;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const printEtiquette = async (br: BonReception, clientName: string) => {
+    try {
+      const blob = await pdf(
+        <BREtiquettePDF
+          brNumber={br.number}
+          clientName={clientName}
+          poidsNet={br.poidsNet}
+          date={br.createdAt}
+          nature={br.nature || 'bawaz'}
+        />
+      ).toBlob();
+      const url = URL.createObjectURL(blob);
+      const printWindow = window.open(url, '_blank');
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error printing etiquette:', error);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.clientId) {
@@ -87,7 +113,7 @@ const BonsReception = () => {
       return;
     }
 
-    addBR({
+    const newBR = addBR({
       date: new Date(formData.date),
       clientId: formData.clientId,
       nature: formData.nature,
@@ -96,6 +122,12 @@ const BonsReception = () => {
       vehicle: formData.vehicle || undefined,
       observations: formData.observations || undefined,
     });
+
+    const client = clients.find(c => c.id === formData.clientId);
+    const clientName = client?.name || '-';
+
+    // Print etiquette automatically
+    await printEtiquette(newBR, clientName);
 
     const natureLabel = formData.nature === 'service' ? 'Service' : 'Bawaz';
     toast.success(t(`BR ${natureLabel} créé avec succès`, `تم إنشاء وصل ${formData.nature === 'service' ? 'الخدمة' : 'الباواز'} بنجاح`));
@@ -171,8 +203,20 @@ const BonsReception = () => {
               variant="ghost" 
               size="sm" 
               onClick={(e) => { e.stopPropagation(); setViewingBR(br); }}
+              title={t('Voir', 'عرض')}
             >
               <Eye className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={(e) => { 
+                e.stopPropagation(); 
+                printEtiquette(br, client?.name || '-'); 
+              }}
+              title={t('Imprimer étiquette', 'طباعة الملصق')}
+            >
+              <Printer className="h-4 w-4" />
             </Button>
             {client && (
               <PDFDownloadButton
