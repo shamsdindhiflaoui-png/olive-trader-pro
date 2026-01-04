@@ -386,9 +386,9 @@ const Stock = () => {
       }
     });
 
-    // Calculate average price per kg based on CURRENT available quantity in reservoir
+    // Calculate average price per kg: Total amount / Total quantity purchased (weighted average)
     const quantiteDisponible = reservoir?.quantiteActuelle || 0;
-    const prixMoyen = quantiteDisponible > 0 ? totalMontant / quantiteDisponible : 0;
+    const prixMoyen = totalQuantiteAchetee > 0 ? totalMontant / totalQuantiteAchetee : 0;
 
     return {
       entries: entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
