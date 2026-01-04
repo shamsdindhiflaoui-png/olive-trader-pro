@@ -30,10 +30,11 @@ import { ClientFicheDialog } from '@/components/clients/ClientFicheDialog';
 import { ClientGrosFicheDialog } from '@/components/clients/ClientGrosFicheDialog';
 import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
 import { AllClientsExtraitPDF } from '@/components/pdf/AllClientsExtraitPDF';
+import { AllClientsGrosExtraitPDF } from '@/components/pdf/AllClientsGrosExtraitPDF';
 
 const Clients = () => {
   const { 
-    clients, clientsGros, clientOperations, bonsReception, paymentReceipts, settings, 
+    clients, clientsGros, clientOperations, bonsReception, bonsLivraison, paymentReceipts, settings, 
     addClient, updateClient, deleteClient,
     addClientGros, updateClientGros, deleteClientGros 
   } = useAppStore();
@@ -212,6 +213,26 @@ const Clients = () => {
       capitalDT: totals.capitalDT,
       avanceDT: totals.avanceDT,
       totalPayments: totals.totalPayments,
+    };
+  });
+
+  // ===== Data for AllClientsGros PDF =====
+  const allClientsGrosData = clientsGros.map(client => {
+    const clientBLs = bonsLivraison.filter(bl => bl.clientId === client.id);
+    const totalQuantite = clientBLs.reduce((sum, bl) => sum + bl.quantite, 0);
+    const totalTTC = clientBLs.reduce((sum, bl) => sum + bl.montantTTC, 0);
+    const totalPaye = clientBLs.filter(bl => bl.paymentStatus === 'paye').reduce((sum, bl) => sum + bl.montantTTC, 0);
+    const totalEnAttente = clientBLs.filter(bl => bl.paymentStatus === 'en_attente').reduce((sum, bl) => sum + bl.montantTTC, 0);
+    
+    return {
+      code: client.code,
+      raisonSociale: client.raisonSociale,
+      clientType: client.clientType,
+      nbBL: clientBLs.length,
+      totalQuantite,
+      totalTTC,
+      totalPaye,
+      totalEnAttente,
     };
   });
 
@@ -482,6 +503,12 @@ const Clients = () => {
         {/* ===== Tab: Client Gros (Vente en Gros) ===== */}
         <TabsContent value="gros" className="mt-6">
           <div className="flex justify-end gap-3 mb-4">
+            <PDFDownloadButton
+              document={<AllClientsGrosExtraitPDF clients={allClientsGrosData} companyName={settings.companyName} />}
+              fileName={`extrait-ventes-gros-${new Date().toISOString().split('T')[0]}.pdf`}
+              label={t('Générer PDF', 'تحميل PDF')}
+              variant="outline"
+            />
             <Dialog open={isGrosDialogOpen} onOpenChange={(open) => { setIsGrosDialogOpen(open); if (!open) resetFormGros(); }}>
               <DialogTrigger asChild>
                 <Button>
