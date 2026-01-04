@@ -306,6 +306,7 @@ const Stock = () => {
   const getReservoirStockDetails = (reservoirId: string) => {
     // Get all entries for this reservoir (only bawaz with prices)
     const affectations = stockAffectations.filter(a => a.reservoirId === reservoirId);
+    const reservoir = reservoirs.find(r => r.id === reservoirId);
     
     const entries: {
       brId: string;
@@ -342,14 +343,16 @@ const Stock = () => {
       }
     });
 
-    // Calculate average price per kg
-    const prixMoyen = totalQuantiteAchetee > 0 ? totalMontant / totalQuantiteAchetee : 0;
+    // Calculate average price per kg based on CURRENT available quantity in reservoir
+    const quantiteDisponible = reservoir?.quantiteActuelle || 0;
+    const prixMoyen = quantiteDisponible > 0 ? totalMontant / quantiteDisponible : 0;
 
     return {
       entries: entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
       totalQuantiteAchetee,
       totalMontant,
       prixMoyen,
+      quantiteDisponible,
     };
   };
 
