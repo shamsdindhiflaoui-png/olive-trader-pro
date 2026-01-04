@@ -38,6 +38,7 @@ const Trituration = () => {
   const [selectedBR, setSelectedBR] = useState<BonReception | null>(null);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
+    numeroLot: '',
     quantiteHuile: '',
     observations: '',
   });
@@ -46,6 +47,7 @@ const Trituration = () => {
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
   const [searchBR, setSearchBR] = useState('');
+  const [searchLot, setSearchLot] = useState('');
   const [searchBREnCours, setSearchBREnCours] = useState('');
   const [filterClientEnCours, setFilterClientEnCours] = useState('all');
   const openBRs = bonsReception.filter(br => br.status === 'open');
@@ -80,6 +82,7 @@ const Trituration = () => {
   const resetForm = () => {
     setFormData({
       date: new Date().toISOString().split('T')[0],
+      numeroLot: '',
       quantiteHuile: '',
       observations: '',
     });
@@ -98,6 +101,7 @@ const Trituration = () => {
     addTrituration({
       brId: selectedBR.id,
       date: new Date(formData.date),
+      numeroLot: formData.numeroLot || undefined,
       quantiteHuile: Number(formData.quantiteHuile),
       observations: formData.observations || undefined,
     });
@@ -110,7 +114,7 @@ const Trituration = () => {
   const getClient = (clientId: string) => clients.find(c => c.id === clientId);
   const getBR = (brId: string) => bonsReception.find(br => br.id === brId);
 
-  // Filtrer les triturations par date et recherche BR
+  // Filtrer les triturations par date et recherche BR/Lot
   const filteredTriturations = useMemo(() => {
     let result = triturations;
     
@@ -120,6 +124,13 @@ const Trituration = () => {
         const br = getBR(trit.brId);
         return br?.number.toLowerCase().includes(searchBR.toLowerCase());
       });
+    }
+    
+    // Filtre par numéro de lot
+    if (searchLot.trim()) {
+      result = result.filter(trit => 
+        trit.numeroLot?.toLowerCase().includes(searchLot.toLowerCase())
+      );
     }
     
     // Filtre par date
@@ -142,7 +153,7 @@ const Trituration = () => {
     
     // Trier par date chronologique (plus ancien en premier)
     return [...result].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [triturations, dateDebut, dateFin, searchBR, bonsReception]);
+  }, [triturations, dateDebut, dateFin, searchBR, searchLot, bonsReception]);
 
   // Statistiques filtrées
   const stats = useMemo(() => {
@@ -166,6 +177,7 @@ const Trituration = () => {
     setDateDebut('');
     setDateFin('');
     setSearchBR('');
+    setSearchLot('');
   };
 
   const resetFiltersEnCours = () => {
@@ -224,6 +236,11 @@ const Trituration = () => {
       key: 'brNumber',
       header: 'N° BR | رقم الوصل',
       render: (trit: TriturationT) => getBR(trit.brId)?.number || '-',
+    },
+    {
+      key: 'numeroLot',
+      header: 'N° Lot | رقم الدفعة',
+      render: (trit: TriturationT) => trit.numeroLot || '-',
     },
     {
       key: 'client',
@@ -393,6 +410,20 @@ const Trituration = () => {
                   </div>
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="searchLot">Rechercher par N° Lot | البحث برقم الدفعة</Label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="searchLot"
+                      type="text"
+                      placeholder="Ex: LOT001"
+                      value={searchLot}
+                      onChange={(e) => setSearchLot(e.target.value)}
+                      className="w-[200px] pl-9"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="dateDebut">Date début | تاريخ البداية</Label>
                   <Input
                     id="dateDebut"
@@ -498,6 +529,17 @@ const Trituration = () => {
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="numeroLot">N° Lot | رقم الدفعة</Label>
+                <Input
+                  id="numeroLot"
+                  type="text"
+                  value={formData.numeroLot}
+                  onChange={(e) => setFormData({ ...formData, numeroLot: e.target.value })}
+                  placeholder="Ex: LOT001"
                 />
               </div>
 
