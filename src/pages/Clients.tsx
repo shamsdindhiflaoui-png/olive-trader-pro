@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Dialog,
   DialogContent,
@@ -22,38 +23,70 @@ import {
 } from '@/components/ui/select';
 import { useAppStore } from '@/store/appStore';
 import { useLanguageStore } from '@/store/languageStore';
-import { Client, TransactionType } from '@/types';
-import { Plus, Pencil, Trash2, FileText } from 'lucide-react';
+import { Client, ClientGros, ClientDetailType, ClientGrosType } from '@/types';
+import { Plus, Pencil, Trash2, FileText, Users, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ClientFicheDialog } from '@/components/clients/ClientFicheDialog';
 import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
 import { AllClientsExtraitPDF } from '@/components/pdf/AllClientsExtraitPDF';
 
 const Clients = () => {
-  const { clients, clientOperations, bonsReception, paymentReceipts, settings, addClient, updateClient, deleteClient } = useAppStore();
+  const { 
+    clients, clientsGros, clientOperations, bonsReception, paymentReceipts, settings, 
+    addClient, updateClient, deleteClient,
+    addClientGros, updateClientGros, deleteClientGros 
+  } = useAppStore();
   const { t, language } = useLanguageStore();
   
+  const [activeTab, setActiveTab] = useState('detail');
+  
+  // Client Détail state
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [ficheClient, setFicheClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    transactionType: 'facon' as TransactionType,
+    clientType: 'agriculteur' as ClientDetailType,
     phone: '',
+    cin: '',
+    ville: '',
     observations: '',
   });
 
-  const clientTypeLabels: Record<TransactionType, string> = {
-    facon: t('Façon (Service)', 'خدمة'),
-    bawaza: t('Bawaza', 'باوازا'),
-    achat_base: t('Achat à la base', 'شراء من المصدر'),
+  // Client Gros state
+  const [isGrosDialogOpen, setIsGrosDialogOpen] = useState(false);
+  const [editingClientGros, setEditingClientGros] = useState<ClientGros | null>(null);
+  const [formDataGros, setFormDataGros] = useState({
+    raisonSociale: '',
+    clientType: 'grossiste' as ClientGrosType,
+    phone: '',
+    email: '',
+    matriculeFiscal: '',
+    adresse: '',
+    conditionsPaiement: '',
+    observations: '',
+  });
+
+  const clientDetailTypeLabels: Record<ClientDetailType, string> = {
+    agriculteur: t('Agriculteur', 'فلاح'),
+    bawaz: t('Bawaz', 'باواز'),
   };
 
+  const clientGrosTypeLabels: Record<ClientGrosType, string> = {
+    grossiste: t('Grossiste', 'تاجر جملة'),
+    exportateur: t('Exportateur', 'مصدّر'),
+    societe: t('Société', 'شركة'),
+    autre: t('Autre', 'آخر'),
+  };
+
+  // ===== Client Détail Functions =====
   const resetForm = () => {
     setFormData({
       name: '',
-      transactionType: 'facon',
+      clientType: 'agriculteur',
       phone: '',
+      cin: '',
+      ville: '',
       observations: '',
     });
     setEditingClient(null);
@@ -83,8 +116,10 @@ const Clients = () => {
     setEditingClient(client);
     setFormData({
       name: client.name,
-      transactionType: client.transactionType,
+      clientType: client.clientType,
       phone: client.phone || '',
+      cin: client.cin || '',
+      ville: client.ville || '',
       observations: client.observations || '',
     });
     setIsDialogOpen(true);
@@ -97,6 +132,64 @@ const Clients = () => {
     }
   };
 
+  // ===== Client Gros Functions =====
+  const resetFormGros = () => {
+    setFormDataGros({
+      raisonSociale: '',
+      clientType: 'grossiste',
+      phone: '',
+      email: '',
+      matriculeFiscal: '',
+      adresse: '',
+      conditionsPaiement: '',
+      observations: '',
+    });
+    setEditingClientGros(null);
+  };
+
+  const handleSubmitGros = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!formDataGros.raisonSociale.trim()) {
+      toast.error(t('La raison sociale est obligatoire', 'الاسم التجاري إجباري'));
+      return;
+    }
+
+    if (editingClientGros) {
+      updateClientGros(editingClientGros.id, formDataGros);
+      toast.success(t('Client modifié avec succès', 'تم تعديل الحريف بنجاح'));
+    } else {
+      addClientGros(formDataGros);
+      toast.success(t('Client ajouté avec succès', 'تم إضافة الحريف بنجاح'));
+    }
+
+    setIsGrosDialogOpen(false);
+    resetFormGros();
+  };
+
+  const handleEditGros = (client: ClientGros) => {
+    setEditingClientGros(client);
+    setFormDataGros({
+      raisonSociale: client.raisonSociale,
+      clientType: client.clientType,
+      phone: client.phone || '',
+      email: client.email || '',
+      matriculeFiscal: client.matriculeFiscal || '',
+      adresse: client.adresse || '',
+      conditionsPaiement: client.conditionsPaiement || '',
+      observations: client.observations || '',
+    });
+    setIsGrosDialogOpen(true);
+  };
+
+  const handleDeleteGros = (client: ClientGros) => {
+    if (confirm(t(`Êtes-vous sûr de vouloir supprimer le client "${client.raisonSociale}" ?`, `هل أنت متأكد من حذف الحريف "${client.raisonSociale}"؟`))) {
+      deleteClientGros(client.id);
+      toast.success(t('Client supprimé avec succès', 'تم حذف الحريف بنجاح'));
+    }
+  };
+
+  // ===== Totals for Client Détail =====
   const getClientTotals = (clientId: string) => {
     const ops = clientOperations.filter(op => op.clientId === clientId);
     const brs = bonsReception.filter(br => br.clientId === clientId);
@@ -120,7 +213,8 @@ const Clients = () => {
     };
   });
 
-  const columns = [
+  // ===== Columns for Client Détail =====
+  const columnsDetail = [
     { 
       key: 'code', 
       header: t('Code', 'الرمز'),
@@ -130,14 +224,15 @@ const Clients = () => {
     },
     { key: 'name', header: t('Nom / Raison sociale', 'الاسم') },
     { 
-      key: 'transactionType', 
+      key: 'clientType', 
       header: t('Type Client', 'نوع الحريف'),
       render: (client: Client) => (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
-          {clientTypeLabels[client.transactionType]}
+          {clientDetailTypeLabels[client.clientType]}
         </span>
       )
     },
+    { key: 'ville', header: t('Ville', 'المدينة') },
     { 
       key: 'capitalDT', 
       header: t('Capital (DT)', 'رأس المال'),
@@ -195,13 +290,75 @@ const Clients = () => {
     },
   ];
 
+  // ===== Columns for Client Gros =====
+  const columnsGros = [
+    { 
+      key: 'code', 
+      header: t('Code', 'الرمز'),
+      render: (client: ClientGros) => (
+        <span className="font-medium text-primary">{client.code}</span>
+      )
+    },
+    { key: 'raisonSociale', header: t('Raison sociale', 'الاسم التجاري') },
+    { 
+      key: 'clientType', 
+      header: t('Type', 'النوع'),
+      render: (client: ClientGros) => (
+        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent text-accent-foreground">
+          {clientGrosTypeLabels[client.clientType]}
+        </span>
+      )
+    },
+    { key: 'phone', header: t('Téléphone', 'الهاتف') },
+    { key: 'email', header: t('Email', 'البريد') },
+    { key: 'matriculeFiscal', header: t('Matricule fiscal', 'المعرف الجبائي') },
+    { 
+      key: 'actions', 
+      header: t('Actions', 'إجراءات'),
+      render: (client: ClientGros) => (
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={(e) => { e.stopPropagation(); handleEditGros(client); }}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={(e) => { e.stopPropagation(); handleDeleteGros(client); }}
+            className="text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      )
+    },
+  ];
+
   return (
     <MainLayout>
       <PageHeader 
         title={t('Gestion des Clients', 'إدارة الحرفاء')} 
-        description={t('Gérez votre portefeuille clients', 'إدارة محفظة حرفائك')}
-        action={
-          <div className="flex items-center gap-3">
+        description={t('Gérez vos clients détail et gros', 'إدارة حرفاء التفصيل والجملة')}
+      />
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsTrigger value="detail" className="flex items-center gap-2">
+            <Users className="h-4 w-4" />
+            {t('Vente en Détail', 'بيع بالتفصيل')}
+          </TabsTrigger>
+          <TabsTrigger value="gros" className="flex items-center gap-2">
+            <Building2 className="h-4 w-4" />
+            {t('Vente en Gros', 'بيع بالجملة')}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ===== Tab: Client Détail (Trituration) ===== */}
+        <TabsContent value="detail" className="mt-6">
+          <div className="flex justify-end gap-3 mb-4">
             <PDFDownloadButton
               document={<AllClientsExtraitPDF clients={allClientsData} companyName={settings.companyName} />}
               fileName={`extrait-complet-clients-${new Date().toISOString().split('T')[0]}.pdf`}
@@ -233,31 +390,51 @@ const Clients = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="transactionType">{t('Type Client *', 'نوع الحريف *')}</Label>
+                    <Label htmlFor="clientType">{t('Type Client *', 'نوع الحريف *')}</Label>
                     <Select
-                      value={formData.transactionType}
-                      onValueChange={(value: TransactionType) => 
-                        setFormData({ ...formData, transactionType: value })
+                      value={formData.clientType}
+                      onValueChange={(value: ClientDetailType) => 
+                        setFormData({ ...formData, clientType: value })
                       }
                     >
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="facon">{t('Façon (Service)', 'خدمة')}</SelectItem>
-                        <SelectItem value="bawaza">{t('Bawaza', 'باوازا')}</SelectItem>
-                        <SelectItem value="achat_base">{t('Achat à la base', 'شراء من المصدر')}</SelectItem>
+                        <SelectItem value="agriculteur">{t('Agriculteur', 'فلاح')}</SelectItem>
+                        <SelectItem value="bawaz">{t('Bawaz', 'باواز')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">{t('Téléphone', 'الهاتف')}</Label>
+                      <Input
+                        id="phone"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        placeholder={t('Numéro', 'الرقم')}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="cin">{t('CIN / Matricule', 'رقم الهوية')}</Label>
+                      <Input
+                        id="cin"
+                        value={formData.cin}
+                        onChange={(e) => setFormData({ ...formData, cin: e.target.value })}
+                        placeholder={t('Optionnel', 'اختياري')}
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="phone">{t('Téléphone', 'الهاتف')}</Label>
+                    <Label htmlFor="ville">{t('Ville / Délégation', 'المدينة / المعتمدية')}</Label>
                     <Input
-                      id="phone"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder={t('Numéro de téléphone', 'رقم الهاتف')}
+                      id="ville"
+                      value={formData.ville}
+                      onChange={(e) => setFormData({ ...formData, ville: e.target.value })}
+                      placeholder={t('Ex: Sfax, Sousse...', 'مثال: صفاقس، سوسة...')}
                     />
                   </div>
 
@@ -268,7 +445,7 @@ const Clients = () => {
                       value={formData.observations}
                       onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
                       placeholder={t('Notes additionnelles...', 'ملاحظات إضافية...')}
-                      rows={3}
+                      rows={2}
                     />
                   </div>
 
@@ -284,14 +461,145 @@ const Clients = () => {
               </DialogContent>
             </Dialog>
           </div>
-        }
-      />
 
-      <DataTable
-        columns={columns}
-        data={clients}
-        emptyMessage={t("Aucun client enregistré. Cliquez sur 'Nouveau Client' pour commencer.", 'لا يوجد حرفاء مسجلين')}
-      />
+          <DataTable
+            columns={columnsDetail}
+            data={clients}
+            emptyMessage={t("Aucun client enregistré. Cliquez sur 'Nouveau Client' pour commencer.", 'لا يوجد حرفاء مسجلين')}
+          />
+        </TabsContent>
+
+        {/* ===== Tab: Client Gros (Vente en Gros) ===== */}
+        <TabsContent value="gros" className="mt-6">
+          <div className="flex justify-end gap-3 mb-4">
+            <Dialog open={isGrosDialogOpen} onOpenChange={(open) => { setIsGrosDialogOpen(open); if (!open) resetFormGros(); }}>
+              <DialogTrigger asChild>
+                <Button>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('Nouveau Client Gros', 'حريف جملة جديد')}
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle className="font-serif">
+                    {editingClientGros ? t('Modifier le client', 'تعديل الحريف') : t('Nouveau client gros', 'حريف جملة جديد')}
+                  </DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmitGros} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="raisonSociale">{t('Raison sociale *', 'الاسم التجاري *')}</Label>
+                    <Input
+                      id="raisonSociale"
+                      value={formDataGros.raisonSociale}
+                      onChange={(e) => setFormDataGros({ ...formDataGros, raisonSociale: e.target.value })}
+                      placeholder={t('Nom de la société', 'اسم الشركة')}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="clientTypeGros">{t('Type *', 'النوع *')}</Label>
+                    <Select
+                      value={formDataGros.clientType}
+                      onValueChange={(value: ClientGrosType) => 
+                        setFormDataGros({ ...formDataGros, clientType: value })
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="grossiste">{t('Grossiste', 'تاجر جملة')}</SelectItem>
+                        <SelectItem value="exportateur">{t('Exportateur', 'مصدّر')}</SelectItem>
+                        <SelectItem value="societe">{t('Société', 'شركة')}</SelectItem>
+                        <SelectItem value="autre">{t('Autre', 'آخر')}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="phoneGros">{t('Téléphone', 'الهاتف')}</Label>
+                      <Input
+                        id="phoneGros"
+                        value={formDataGros.phone}
+                        onChange={(e) => setFormDataGros({ ...formDataGros, phone: e.target.value })}
+                        placeholder={t('Numéro', 'الرقم')}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">{t('Email', 'البريد الإلكتروني')}</Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        value={formDataGros.email}
+                        onChange={(e) => setFormDataGros({ ...formDataGros, email: e.target.value })}
+                        placeholder="email@example.com"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="matriculeFiscal">{t('Matricule fiscal', 'المعرف الجبائي')}</Label>
+                    <Input
+                      id="matriculeFiscal"
+                      value={formDataGros.matriculeFiscal}
+                      onChange={(e) => setFormDataGros({ ...formDataGros, matriculeFiscal: e.target.value })}
+                      placeholder={t('Ex: 123456789ABC000', 'مثال: 123456789ABC000')}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="adresse">{t('Adresse', 'العنوان')}</Label>
+                    <Textarea
+                      id="adresse"
+                      value={formDataGros.adresse}
+                      onChange={(e) => setFormDataGros({ ...formDataGros, adresse: e.target.value })}
+                      placeholder={t('Adresse complète...', 'العنوان الكامل...')}
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="conditionsPaiement">{t('Conditions de paiement', 'شروط الدفع')}</Label>
+                    <Input
+                      id="conditionsPaiement"
+                      value={formDataGros.conditionsPaiement}
+                      onChange={(e) => setFormDataGros({ ...formDataGros, conditionsPaiement: e.target.value })}
+                      placeholder={t('Ex: 30 jours, comptant...', 'مثال: 30 يوم، نقدي...')}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="observationsGros">{t('Observations', 'ملاحظات')}</Label>
+                    <Textarea
+                      id="observationsGros"
+                      value={formDataGros.observations}
+                      onChange={(e) => setFormDataGros({ ...formDataGros, observations: e.target.value })}
+                      placeholder={t('Notes additionnelles...', 'ملاحظات إضافية...')}
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4">
+                    <Button type="button" variant="outline" onClick={() => setIsGrosDialogOpen(false)}>
+                      {t('Annuler', 'إلغاء')}
+                    </Button>
+                    <Button type="submit">
+                      {editingClientGros ? t('Enregistrer', 'حفظ') : t('Créer', 'إنشاء')}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <DataTable
+            columns={columnsGros}
+            data={clientsGros}
+            emptyMessage={t("Aucun client gros enregistré. Cliquez sur 'Nouveau Client Gros' pour commencer.", 'لا يوجد حرفاء جملة مسجلين')}
+          />
+        </TabsContent>
+      </Tabs>
 
       {ficheClient && (
         <ClientFicheDialog

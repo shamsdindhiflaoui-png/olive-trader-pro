@@ -1,3 +1,10 @@
+// Client Détail (Trituration) - Agriculteur ou Bawaz
+export type ClientDetailType = 'agriculteur' | 'bawaz';
+
+// Client Gros (Vente en Gros) - Grossiste, Exportateur, Société, Autre
+export type ClientGrosType = 'grossiste' | 'exportateur' | 'societe' | 'autre';
+
+// Legacy support - maps to new types
 export type TransactionType = 'facon' | 'bawaza' | 'achat_base';
 
 export type ClientOperationType = 'capital_fdr' | 'avance' | 'br_reception';
@@ -10,9 +17,9 @@ export interface ClientOperation {
   libelle: string;
   montantDT?: number;
   quantiteKg?: number;
-  reference?: string; // BR number, etc.
+  reference?: string;
   observations?: string;
-  receiptNumber?: string; // Auto-generated receipt number
+  receiptNumber?: string;
   createdAt: Date;
 }
 
@@ -31,12 +38,31 @@ export interface DeletedOperation {
   deletedReason?: string;
 }
 
+// Client Détail (Trituration) - for olive reception and processing
 export interface Client {
   id: string;
   code: string;
   name: string;
-  transactionType: TransactionType;
+  clientType: ClientDetailType;
+  transactionType: TransactionType; // Legacy - derived from clientType
   phone?: string;
+  cin?: string; // CIN / Matricule (optional)
+  ville?: string; // Ville / Délégation
+  observations?: string;
+  createdAt: Date;
+}
+
+// Client Gros (Vente en Gros) - for wholesale oil sales
+export interface ClientGros {
+  id: string;
+  code: string;
+  raisonSociale: string;
+  clientType: ClientGrosType;
+  phone?: string;
+  email?: string;
+  matriculeFiscal?: string;
+  adresse?: string;
+  conditionsPaiement?: string;
   observations?: string;
   createdAt: Date;
 }
