@@ -174,7 +174,7 @@ const Stock = () => {
     e.preventDefault();
     
     if (!reservoirForm.code || !reservoirForm.capaciteMax) {
-      toast.error('Le code et la capacité sont obligatoires | الرمز والسعة إجباريان');
+      toast.error(t('Le code et la capacité sont obligatoires', 'الرمز والسعة إجباريان'));
       return;
     }
 
@@ -186,7 +186,7 @@ const Stock = () => {
       observations: reservoirForm.observations || undefined,
     });
 
-    toast.success('Réservoir ajouté avec succès | تمت إضافة الخزان بنجاح');
+    toast.success(t('Réservoir ajouté avec succès', 'تمت إضافة الخزان بنجاح'));
     setIsReservoirDialogOpen(false);
     setReservoirForm({ code: '', capaciteMax: '', observations: '' });
   };
@@ -195,7 +195,7 @@ const Stock = () => {
     e.preventDefault();
     
     if (!selectedTrit || !affectForm.reservoirId || !affectForm.quantite) {
-      toast.error('Veuillez remplir tous les champs | يرجى ملء جميع الحقول');
+      toast.error(t('Veuillez remplir tous les champs', 'يرجى ملء جميع الحقول'));
       return;
     }
 
@@ -203,12 +203,12 @@ const Stock = () => {
     const success = affectToReservoir(affectForm.reservoirId, quantity, selectedTrit.br.id);
 
     if (success) {
-      toast.success('Huile affectée au réservoir avec succès | تم تخصيص الزيت للخزان بنجاح');
+      toast.success(t('Huile affectée au réservoir avec succès', 'تم تخصيص الزيت للخزان بنجاح'));
       setIsAffectDialogOpen(false);
       setSelectedTrit(null);
       setAffectForm({ reservoirId: '', quantite: '' });
     } else {
-      toast.error('Capacité du réservoir insuffisante | سعة الخزان غير كافية');
+      toast.error(t('Capacité du réservoir insuffisante', 'سعة الخزان غير كافية'));
     }
   };
 
@@ -216,12 +216,12 @@ const Stock = () => {
     e.preventDefault();
     
     if (!transferForm.fromReservoirId || !transferForm.toReservoirId || !transferForm.quantite) {
-      toast.error('Veuillez remplir tous les champs | يرجى ملء جميع الحقول');
+      toast.error(t('Veuillez remplir tous les champs', 'يرجى ملء جميع الحقول'));
       return;
     }
     
     if (transferForm.fromReservoirId === transferForm.toReservoirId) {
-      toast.error('Les réservoirs source et destination doivent être différents | يجب أن يكون الخزانان مختلفين');
+      toast.error(t('Les réservoirs source et destination doivent être différents', 'يجب أن يكون الخزانان مختلفين'));
       return;
     }
 
@@ -232,11 +232,11 @@ const Stock = () => {
     );
 
     if (success) {
-      toast.success('Transfert effectué avec succès | تم التحويل بنجاح');
+      toast.success(t('Transfert effectué avec succès', 'تم التحويل بنجاح'));
       setIsTransferDialogOpen(false);
       setTransferForm({ fromReservoirId: '', toReservoirId: '', quantite: '' });
     } else {
-      toast.error('Transfert impossible (quantité insuffisante ou capacité dépassée) | التحويل مستحيل');
+      toast.error(t('Transfert impossible (quantité insuffisante ou capacité dépassée)', 'التحويل مستحيل'));
     }
   };
 
@@ -244,7 +244,7 @@ const Stock = () => {
     e.preventDefault();
     
     if (!saleForm.clientId || !saleForm.reservoirId || !saleForm.quantite || !saleForm.prixUnitaire) {
-      toast.error('Veuillez remplir tous les champs obligatoires | يرجى ملء جميع الحقول الإجبارية');
+      toast.error(t('Veuillez remplir tous les champs obligatoires', 'يرجى ملء جميع الحقول الإجبارية'));
       return;
     }
 
@@ -261,7 +261,7 @@ const Stock = () => {
     if (bl) {
       const client = clients.find(c => c.id === saleForm.clientId);
       setLastCreatedBL({ bl, client });
-      toast.success(`Vente enregistrée - ${bl.number} | تم تسجيل البيع`);
+      toast.success(t(`Vente enregistrée - ${bl.number}`, `تم تسجيل البيع - ${bl.number}`));
       setSaleForm({
         clientId: '',
         reservoirId: '',
@@ -272,7 +272,7 @@ const Stock = () => {
         date: format(new Date(), 'yyyy-MM-dd'),
       });
     } else {
-      toast.error('Vente impossible (quantité insuffisante dans le réservoir) | البيع مستحيل');
+      toast.error(t('Vente impossible (quantité insuffisante dans le réservoir)', 'البيع مستحيل'));
     }
   };
 
@@ -284,22 +284,22 @@ const Stock = () => {
   const reservoirColumns = [
     { 
       key: 'code', 
-      header: 'Code | الرمز',
+      header: t('Code', 'الرمز'),
       render: (r: Reservoir) => <span className="font-medium text-primary">{r.code}</span>
     },
     { 
       key: 'capaciteMax', 
-      header: 'Capacité Max | السعة القصوى',
+      header: t('Capacité Max', 'السعة القصوى'),
       render: (r: Reservoir) => `${r.capaciteMax.toLocaleString()} L`
     },
     { 
       key: 'quantiteActuelle', 
-      header: 'Quantité Actuelle | الكمية الحالية',
+      header: t('Quantité Actuelle', 'الكمية الحالية'),
       render: (r: Reservoir) => `${r.quantiteActuelle.toLocaleString()} L`
     },
     { 
       key: 'fill', 
-      header: 'Remplissage | الامتلاء',
+      header: t('Remplissage', 'الامتلاء'),
       render: (r: Reservoir) => {
         const percentage = (r.quantiteActuelle / r.capaciteMax) * 100;
         return (
@@ -317,7 +317,7 @@ const Stock = () => {
     },
     { 
       key: 'status', 
-      header: 'Statut | الحالة',
+      header: t('Statut', 'الحالة'),
       render: (r: Reservoir) => <StatusBadge status={r.status} />
     },
   ];
@@ -325,12 +325,12 @@ const Stock = () => {
   const movementColumns = [
     {
       key: 'date',
-      header: 'Date | التاريخ',
-      render: (m: StockMovement) => format(new Date(m.date), 'dd/MM/yyyy HH:mm', { locale: fr }),
+      header: t('Date', 'التاريخ'),
+      render: (m: StockMovement) => format(new Date(m.date), 'dd/MM/yyyy HH:mm', { locale: dateLocale }),
     },
     {
       key: 'reservoir',
-      header: 'Réservoir | الخزان',
+      header: t('Réservoir', 'الخزان'),
       render: (m: StockMovement) => {
         const res = reservoirs.find(r => r.id === m.reservoirId);
         return <span className="font-medium">{res?.code || '-'}</span>;
@@ -338,7 +338,7 @@ const Stock = () => {
     },
     {
       key: 'type',
-      header: 'Type | النوع',
+      header: t('Type', 'النوع'),
       render: (m: StockMovement) => {
         const colors: Record<string, string> = {
           entree: 'bg-success/10 text-success',
@@ -355,7 +355,7 @@ const Stock = () => {
     },
     {
       key: 'quantite',
-      header: 'Quantité | الكمية',
+      header: t('Quantité', 'الكمية'),
       render: (m: StockMovement) => {
         const isPositive = m.type === 'entree' || m.type === 'transfert_in';
         return (
@@ -367,7 +367,7 @@ const Stock = () => {
     },
     {
       key: 'reference',
-      header: 'Référence | المرجع',
+      header: t('Référence', 'المرجع'),
       render: (m: StockMovement) => {
         if (m.type === 'sortie_vente' && m.clientId) {
           const client = clients.find(c => c.id === m.clientId);
@@ -384,7 +384,7 @@ const Stock = () => {
             <div>
               <span className="font-medium">{m.reference}</span>
               <span className="text-xs text-muted-foreground block">
-                {m.type === 'transfert_in' ? 'De | من: ' : 'Vers | إلى: '}{linkedRes?.code}
+                {m.type === 'transfert_in' ? t('De', 'من') : t('Vers', 'إلى')}: {linkedRes?.code}
               </span>
             </div>
           );
@@ -405,52 +405,52 @@ const Stock = () => {
               <DialogTrigger asChild>
                 <Button variant="outline">
                   <ArrowRightLeft className="mr-2 h-4 w-4" />
-                  Transfert | تحويل
+                  {t('Transfert', 'تحويل')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle className="font-serif">Transfert entre réservoirs | التحويل بين الخزانات</DialogTitle>
+                  <DialogTitle className="font-serif">{t('Transfert entre réservoirs', 'التحويل بين الخزانات')}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleTransfer} className="space-y-4">
                   <div className="space-y-2">
-                    <Label>Réservoir source * | الخزان المصدر *</Label>
+                    <Label>{t('Réservoir source *', 'الخزان المصدر *')}</Label>
                     <Select
                       value={transferForm.fromReservoirId}
                       onValueChange={(value) => setTransferForm({ ...transferForm, fromReservoirId: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner... | اختر..." />
+                        <SelectValue placeholder={t('Sélectionner...', 'اختر...')} />
                       </SelectTrigger>
                       <SelectContent>
                         {reservoirs.filter(r => r.quantiteActuelle > 0).map((r) => (
                           <SelectItem key={r.id} value={r.id}>
-                            {r.code} - {r.quantiteActuelle.toLocaleString()} L disponibles | متاح
+                            {r.code} - {r.quantiteActuelle.toLocaleString()} L {t('disponibles', 'متاح')}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Réservoir destination * | الخزان الوجهة *</Label>
+                    <Label>{t('Réservoir destination *', 'الخزان الوجهة *')}</Label>
                     <Select
                       value={transferForm.toReservoirId}
                       onValueChange={(value) => setTransferForm({ ...transferForm, toReservoirId: value })}
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Sélectionner... | اختر..." />
+                        <SelectValue placeholder={t('Sélectionner...', 'اختر...')} />
                       </SelectTrigger>
                       <SelectContent>
                         {reservoirs.filter(r => r.status !== 'plein').map((r) => (
                           <SelectItem key={r.id} value={r.id}>
-                            {r.code} - Libre | فارغ: {(r.capaciteMax - r.quantiteActuelle).toLocaleString()} L
+                            {r.code} - {t('Libre', 'فارغ')}: {(r.capaciteMax - r.quantiteActuelle).toLocaleString()} L
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>Quantité à transférer (L) * | الكمية للتحويل *</Label>
+                    <Label>{t('Quantité à transférer (L) *', 'الكمية للتحويل *')}</Label>
                     <Input
                       type="number"
                       value={transferForm.quantite}
@@ -461,9 +461,9 @@ const Stock = () => {
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
                     <Button type="button" variant="outline" onClick={() => setIsTransferDialogOpen(false)}>
-                      Annuler | إلغاء
+                      {t('Annuler', 'إلغاء')}
                     </Button>
-                    <Button type="submit">Transférer | تحويل</Button>
+                    <Button type="submit">{t('Transférer', 'تحويل')}</Button>
                   </div>
                 </form>
               </DialogContent>
@@ -473,35 +473,35 @@ const Stock = () => {
               <DialogTrigger asChild>
                 <Button variant="outline">
                   <ShoppingCart className="mr-2 h-4 w-4" />
-                  Vente | بيع
+                  {t('Vente', 'بيع')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                  <DialogTitle className="font-serif">Nouvelle vente d'huile | بيع زيت جديد</DialogTitle>
+                  <DialogTitle className="font-serif">{t("Nouvelle vente d'huile", "بيع زيت جديد")}</DialogTitle>
                 </DialogHeader>
                 {lastCreatedBL ? (
                   <div className="space-y-4">
                     <div className="p-4 rounded-lg bg-success/10 text-center">
                       <FileText className="h-12 w-12 mx-auto text-success mb-2" />
                       <p className="font-semibold text-lg">{lastCreatedBL.bl.number}</p>
-                      <p className="text-sm text-muted-foreground">Bon de livraison créé avec succès | تم إنشاء وصل التسليم</p>
+                      <p className="text-sm text-muted-foreground">{t('Bon de livraison créé avec succès', 'تم إنشاء وصل التسليم')}</p>
                     </div>
                     <div className="grid grid-cols-2 gap-4 text-sm">
                       <div>
-                        <span className="text-muted-foreground">Client | الحريف:</span>
+                        <span className="text-muted-foreground">{t('Client', 'الحريف')}:</span>
                         <p className="font-medium">{lastCreatedBL.client?.name}</p>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Quantité | الكمية:</span>
+                        <span className="text-muted-foreground">{t('Quantité', 'الكمية')}:</span>
                         <p className="font-medium">{lastCreatedBL.bl.quantite.toLocaleString()} L</p>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Montant HT | المبلغ خام:</span>
+                        <span className="text-muted-foreground">{t('Montant HT', 'المبلغ خام')}:</span>
                         <p className="font-medium">{lastCreatedBL.bl.montantHT.toFixed(3)} DT</p>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Total TTC | المجموع:</span>
+                        <span className="text-muted-foreground">{t('Total TTC', 'المجموع')}:</span>
                         <p className="font-semibold text-primary">{lastCreatedBL.bl.montantTTC.toFixed(3)} DT</p>
                       </div>
                     </div>
@@ -514,12 +514,12 @@ const Stock = () => {
                         {({ loading }) => (
                           <Button className="w-full" disabled={loading}>
                             <Download className="mr-2 h-4 w-4" />
-                            {loading ? 'Préparation... | جاري التحميل...' : 'Télécharger PDF | تحميل PDF'}
+                            {loading ? t('Préparation...', 'جاري التحميل...') : t('Télécharger PDF', 'تحميل PDF')}
                           </Button>
                         )}
                       </PDFDownloadLink>
                       <Button variant="outline" onClick={() => { setLastCreatedBL(null); }}>
-                        Nouvelle vente | بيع جديد
+                        {t('Nouvelle vente', 'بيع جديد')}
                       </Button>
                     </div>
                   </div>
@@ -527,13 +527,13 @@ const Stock = () => {
                   <form onSubmit={handleSale} className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2 col-span-2">
-                        <Label>Client * | الحريف *</Label>
+                        <Label>{t('Client *', 'الحريف *')}</Label>
                         <Select
                           value={saleForm.clientId}
                           onValueChange={(value) => setSaleForm({ ...saleForm, clientId: value })}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner un client... | اختر حريفاً..." />
+                            <SelectValue placeholder={t('Sélectionner un client...', 'اختر حريفاً...')} />
                           </SelectTrigger>
                           <SelectContent>
                             {clients.map((c) => (
@@ -543,13 +543,13 @@ const Stock = () => {
                         </Select>
                       </div>
                       <div className="space-y-2 col-span-2">
-                        <Label>Réservoir * | الخزان *</Label>
+                        <Label>{t('Réservoir *', 'الخزان *')}</Label>
                         <Select
                           value={saleForm.reservoirId}
                           onValueChange={(value) => setSaleForm({ ...saleForm, reservoirId: value })}
                         >
                           <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner... | اختر..." />
+                            <SelectValue placeholder={t('Sélectionner...', 'اختر...')} />
                           </SelectTrigger>
                           <SelectContent>
                             {reservoirs.filter(r => r.quantiteActuelle > 0).map((r) => (
@@ -561,7 +561,7 @@ const Stock = () => {
                         </Select>
                       </div>
                       <div className="space-y-2">
-                        <Label>Quantité (L) * | الكمية *</Label>
+                        <Label>{t('Quantité (L) *', 'الكمية *')}</Label>
                         <Input
                           type="number"
                           value={saleForm.quantite}
@@ -571,7 +571,7 @@ const Stock = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Prix unitaire (DT/L) * | السعر *</Label>
+                        <Label>{t('Prix unitaire (DT/L) *', 'السعر *')}</Label>
                         <Input
                           type="number"
                           value={saleForm.prixUnitaire}
@@ -581,7 +581,7 @@ const Stock = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Taux TVA (%) | ض.ق.م</Label>
+                        <Label>{t('Taux TVA (%)', 'ض.ق.م')}</Label>
                         <Input
                           type="number"
                           value={saleForm.tauxTVA}
@@ -590,7 +590,7 @@ const Stock = () => {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label>Droit de Timbre (DT) | حق الطابع</Label>
+                        <Label>{t('Droit de Timbre (DT)', 'حق الطابع')}</Label>
                         <Input
                           type="number"
                           value={saleForm.droitTimbre}
@@ -600,7 +600,7 @@ const Stock = () => {
                         />
                       </div>
                       <div className="space-y-2 col-span-2">
-                        <Label>Date * | التاريخ *</Label>
+                        <Label>{t('Date *', 'التاريخ *')}</Label>
                         <Input
                           type="date"
                           value={saleForm.date}
@@ -610,9 +610,9 @@ const Stock = () => {
                     </div>
                     <div className="flex justify-end gap-3 pt-4">
                       <Button type="button" variant="outline" onClick={() => setIsSaleDialogOpen(false)}>
-                        Annuler | إلغاء
+                        {t('Annuler', 'إلغاء')}
                       </Button>
-                      <Button type="submit">Créer le BL | إنشاء الوصل</Button>
+                      <Button type="submit">{t('Créer le BL', 'إنشاء الوصل')}</Button>
                     </div>
                   </form>
                 )}
@@ -623,16 +623,16 @@ const Stock = () => {
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
-                  Nouveau Réservoir | خزان جديد
+                  {t('Nouveau Réservoir', 'خزان جديد')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
-                  <DialogTitle className="font-serif">Nouveau Réservoir | خزان جديد</DialogTitle>
+                  <DialogTitle className="font-serif">{t('Nouveau Réservoir', 'خزان جديد')}</DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleAddReservoir} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="code">Code du réservoir * | رمز الخزان *</Label>
+                    <Label htmlFor="code">{t('Code du réservoir *', 'رمز الخزان *')}</Label>
                     <Input
                       id="code"
                       value={reservoirForm.code}
@@ -641,7 +641,7 @@ const Stock = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="capacite">Capacité maximale (litres) * | السعة القصوى *</Label>
+                    <Label htmlFor="capacite">{t('Capacité maximale (litres) *', 'السعة القصوى *')}</Label>
                     <Input
                       id="capacite"
                       type="number"
@@ -651,20 +651,20 @@ const Stock = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="resObservations">Observations | ملاحظات</Label>
+                    <Label htmlFor="resObservations">{t('Observations', 'ملاحظات')}</Label>
                     <Textarea
                       id="resObservations"
                       value={reservoirForm.observations}
                       onChange={(e) => setReservoirForm({ ...reservoirForm, observations: e.target.value })}
-                      placeholder="Notes... | ملاحظات..."
+                      placeholder={t('Notes...', 'ملاحظات...')}
                       rows={2}
                     />
                   </div>
                   <div className="flex justify-end gap-3 pt-4">
                     <Button type="button" variant="outline" onClick={() => setIsReservoirDialogOpen(false)}>
-                      Annuler | إلغاء
+                      {t('Annuler', 'إلغاء')}
                     </Button>
-                    <Button type="submit">Créer | إنشاء</Button>
+                    <Button type="submit">{t('Créer', 'إنشاء')}</Button>
                   </div>
                 </form>
               </DialogContent>
@@ -676,27 +676,27 @@ const Stock = () => {
       {/* Stats */}
       <div className="grid gap-4 md:grid-cols-4 mb-6">
         <StatCard
-          title="Stock Total | المخزون الإجمالي"
+          title={t('Stock Total', 'المخزون الإجمالي')}
           value={`${stats.totalStock.toLocaleString()} L`}
-          subtitle={`Capacité | السعة: ${stats.totalCapacity.toLocaleString()} L`}
+          subtitle={`${t('Capacité', 'السعة')}: ${stats.totalCapacity.toLocaleString()} L`}
           icon={Database}
         />
         <StatCard
-          title="Taux Remplissage | نسبة الامتلاء"
+          title={t('Taux Remplissage', 'نسبة الامتلاء')}
           value={`${stats.totalCapacity > 0 ? ((stats.totalStock / stats.totalCapacity) * 100).toFixed(0) : 0}%`}
-          subtitle={`${reservoirs.length} réservoirs | خزانات`}
+          subtitle={`${reservoirs.length} ${t('réservoirs', 'خزانات')}`}
           icon={Droplets}
         />
         <StatCard
-          title="Entrées (période) | المدخلات"
+          title={t('Entrées (période)', 'المدخلات')}
           value={`${stats.totalEntries.toLocaleString()} L`}
-          subtitle="Huile entrée en stock | الزيت المدخل"
+          subtitle={t('Huile entrée en stock', 'الزيت المدخل')}
           icon={ArrowRightLeft}
         />
         <StatCard
-          title="Ventes (période) | المبيعات"
+          title={t('Ventes (période)', 'المبيعات')}
           value={`${stats.totalSales.toLocaleString()} L`}
-          subtitle="Huile vendue | الزيت المباع"
+          subtitle={t('Huile vendue', 'الزيت المباع')}
           icon={ShoppingCart}
         />
       </div>
@@ -705,15 +705,15 @@ const Stock = () => {
         <TabsList>
           <TabsTrigger value="reservoirs" className="gap-2">
             <Database className="h-4 w-4" />
-            Réservoirs | الخزانات
+            {t('Réservoirs', 'الخزانات')}
           </TabsTrigger>
           <TabsTrigger value="affectation" className="gap-2">
             <Droplets className="h-4 w-4" />
-            Affectation | التخصيص ({pendingAffectations.length})
+            {t('Affectation', 'التخصيص')} ({pendingAffectations.length})
           </TabsTrigger>
           <TabsTrigger value="historique" className="gap-2">
             <History className="h-4 w-4" />
-            Historique | السجل
+            {t('Historique', 'السجل')}
           </TabsTrigger>
         </TabsList>
 
@@ -721,7 +721,7 @@ const Stock = () => {
           <DataTable
             columns={reservoirColumns}
             data={reservoirs}
-            emptyMessage="Aucun réservoir. Créez des réservoirs pour gérer votre stock d'huile. | لا توجد خزانات"
+            emptyMessage={t("Aucun réservoir. Créez des réservoirs pour gérer votre stock d'huile.", "لا توجد خزانات")}
           />
         </TabsContent>
 
@@ -731,9 +731,9 @@ const Stock = () => {
               <div className="flex h-20 w-20 items-center justify-center rounded-full bg-muted mb-4">
                 <Droplets className="h-10 w-10 text-muted-foreground" />
               </div>
-              <h3 className="font-serif text-xl font-semibold mb-2">Aucune affectation en attente | لا توجد تخصيصات معلقة</h3>
+              <h3 className="font-serif text-xl font-semibold mb-2">{t('Aucune affectation en attente', 'لا توجد تخصيصات معلقة')}</h3>
               <p className="text-muted-foreground text-center max-w-md">
-                Les BR de type Façon n'impactent pas le stock. Seuls les BR Bawaza et Achat à la base apparaissent ici. | وصولات الخدمة لا تؤثر على المخزون
+                {t("Les BR de type Façon n'impactent pas le stock. Seuls les BR Bawaza et Achat à la base apparaissent ici.", "وصولات الخدمة لا تؤثر على المخزون")}
               </p>
             </div>
           ) : (
@@ -758,21 +758,21 @@ const Stock = () => {
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="text-sm">
-                        <span className="text-muted-foreground">Client | الحريف: </span>
+                        <span className="text-muted-foreground">{t('Client', 'الحريف')}: </span>
                         <span className="font-medium">{client.name}</span>
                       </div>
                       <div className="text-sm">
-                        <span className="text-muted-foreground">Huile produite | الزيت المنتج: </span>
+                        <span className="text-muted-foreground">{t('Huile produite', 'الزيت المنتج')}: </span>
                         <span className="font-medium">{trit.quantiteHuile.toLocaleString()} L</span>
                       </div>
                       {client.transactionType === 'bawaza' && (
                         <div className="text-sm">
-                          <span className="text-muted-foreground">Part huilerie | حصة المعصرة ({settings.partHuilerieBawaza}%): </span>
+                          <span className="text-muted-foreground">{t('Part huilerie', 'حصة المعصرة')} ({settings.partHuilerieBawaza}%): </span>
                           <span className="font-semibold text-primary">{targetQuantity.toFixed(1)} L</span>
                         </div>
                       )}
                       <div className="text-sm">
-                        <span className="text-muted-foreground">Reste à affecter | المتبقي للتخصيص: </span>
+                        <span className="text-muted-foreground">{t('Reste à affecter', 'المتبقي للتخصيص')}: </span>
                         <span className="font-semibold text-warning">{remaining.toFixed(1)} L</span>
                       </div>
                       <Button 
@@ -780,7 +780,7 @@ const Stock = () => {
                         onClick={() => openAffectDialog(br, trit)}
                         disabled={reservoirs.filter(r => r.status !== 'plein').length === 0}
                       >
-                        Affecter au stock | تخصيص للمخزون
+                        {t('Affecter au stock', 'تخصيص للمخزون')}
                       </Button>
                     </CardContent>
                   </Card>
@@ -796,13 +796,13 @@ const Stock = () => {
             <CardContent className="pt-6">
               <div className="grid gap-4 md:grid-cols-4">
                 <div className="space-y-2">
-                  <Label>Réservoir | الخزان</Label>
+                  <Label>{t('Réservoir', 'الخزان')}</Label>
                   <Select value={selectedReservoir} onValueChange={setSelectedReservoir}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Tous | الكل" />
+                      <SelectValue placeholder={t('Tous', 'الكل')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Tous les réservoirs | كل الخزانات</SelectItem>
+                      <SelectItem value="all">{t('Tous les réservoirs', 'كل الخزانات')}</SelectItem>
                       {reservoirs.map((r) => (
                         <SelectItem key={r.id} value={r.id}>{r.code}</SelectItem>
                       ))}
@@ -810,7 +810,7 @@ const Stock = () => {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Date début | تاريخ البداية</Label>
+                  <Label>{t('Date début', 'تاريخ البداية')}</Label>
                   <Input
                     type="date"
                     value={dateDebut}
@@ -818,7 +818,7 @@ const Stock = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Date fin | تاريخ النهاية</Label>
+                  <Label>{t('Date fin', 'تاريخ النهاية')}</Label>
                   <Input
                     type="date"
                     value={dateFin}
@@ -830,7 +830,7 @@ const Stock = () => {
                     variant="outline" 
                     onClick={() => { setSelectedReservoir('all'); setDateDebut(''); setDateFin(''); }}
                   >
-                    Réinitialiser | إعادة تعيين
+                    {t('Réinitialiser', 'إعادة تعيين')}
                   </Button>
                 </div>
               </div>
@@ -840,7 +840,7 @@ const Stock = () => {
           <DataTable
             columns={movementColumns}
             data={filteredMovements}
-            emptyMessage="Aucun mouvement de stock enregistré. | لا توجد حركات مخزون مسجلة"
+            emptyMessage={t('Aucun mouvement de stock enregistré.', 'لا توجد حركات مخزون')}
           />
         </TabsContent>
       </Tabs>

@@ -103,7 +103,7 @@ export default function Vente() {
     e.preventDefault();
     
     if (!saleForm.clientId || !saleForm.reservoirId || !saleForm.quantite || !saleForm.prixUnitaire) {
-      toast.error('Veuillez remplir tous les champs obligatoires | يرجى ملء جميع الحقول الإجبارية');
+      toast.error(t('Veuillez remplir tous les champs obligatoires', 'يرجى ملء جميع الحقول الإجبارية'));
       return;
     }
 
@@ -120,7 +120,7 @@ export default function Vente() {
     if (bl) {
       const client = clients.find(c => c.id === saleForm.clientId);
       setLastCreatedBL({ bl, client });
-      toast.success(`Vente enregistrée - ${bl.number} | تم تسجيل البيع`);
+      toast.success(t(`Vente enregistrée - ${bl.number}`, `تم تسجيل البيع - ${bl.number}`));
       setSaleForm({
         clientId: '',
         reservoirId: '',
@@ -131,7 +131,7 @@ export default function Vente() {
         date: format(new Date(), 'yyyy-MM-dd'),
       });
     } else {
-      toast.error('Vente impossible (quantité insuffisante dans le réservoir) | البيع مستحيل (كمية غير كافية)');
+      toast.error(t('Vente impossible (quantité insuffisante dans le réservoir)', 'البيع مستحيل (كمية غير كافية)'));
     }
   };
 
@@ -148,7 +148,7 @@ export default function Vente() {
     });
 
     if (success) {
-      toast.success(`Paiement enregistré pour ${selectedBL.number} | تم تسجيل الدفع`);
+      toast.success(t(`Paiement enregistré pour ${selectedBL.number}`, `تم تسجيل الدفع لـ ${selectedBL.number}`));
       setIsPaymentDialogOpen(false);
       setSelectedBL(null);
       setPaymentForm({
@@ -158,7 +158,7 @@ export default function Vente() {
         date: format(new Date(), 'yyyy-MM-dd'),
       });
     } else {
-      toast.error("Erreur lors de l'enregistrement du paiement | خطأ في تسجيل الدفع");
+      toast.error(t("Erreur lors de l'enregistrement du paiement", "خطأ في تسجيل الدفع"));
     }
   };
 
@@ -170,17 +170,17 @@ export default function Vente() {
   const blColumns = [
     {
       key: 'number',
-      header: 'N° BL | رقم وصل التسليم',
+      header: t('N° BL', 'رقم وصل التسليم'),
       render: (bl: BonLivraison) => <span className="font-mono font-medium text-primary">{bl.number}</span>,
     },
     {
       key: 'date',
-      header: 'Date | التاريخ',
-      render: (bl: BonLivraison) => format(new Date(bl.date), 'dd/MM/yyyy', { locale: fr }),
+      header: t('Date', 'التاريخ'),
+      render: (bl: BonLivraison) => format(new Date(bl.date), 'dd/MM/yyyy', { locale: dateLocale }),
     },
     {
       key: 'client',
-      header: 'Client | الحريف',
+      header: t('Client', 'الحريف'),
       render: (bl: BonLivraison) => {
         const client = clients.find(c => c.id === bl.clientId);
         return client?.name || '-';
@@ -188,35 +188,35 @@ export default function Vente() {
     },
     {
       key: 'quantite',
-      header: 'Quantité | الكمية',
+      header: t('Quantité', 'الكمية'),
       render: (bl: BonLivraison) => `${formatNumber(bl.quantite)} L`,
     },
     {
       key: 'prixUnitaire',
-      header: 'Prix U. | السعر',
+      header: t('Prix U.', 'السعر'),
       render: (bl: BonLivraison) => `${formatNumber(bl.prixUnitaire)} DT`,
     },
     {
       key: 'montantTTC',
-      header: 'Montant TTC | المبلغ',
+      header: t('Montant TTC', 'المبلغ'),
       render: (bl: BonLivraison) => <span className="font-semibold">{formatNumber(bl.montantTTC)} DT</span>,
     },
     {
       key: 'status',
-      header: 'Statut | الحالة',
+      header: t('Statut', 'الحالة'),
       render: (bl: BonLivraison) => (
         <Badge variant={bl.paymentStatus === 'paye' ? 'default' : 'secondary'} className={bl.paymentStatus === 'paye' ? 'bg-success text-success-foreground' : ''}>
           {bl.paymentStatus === 'paye' ? (
-            <><CheckCircle2 className="h-3 w-3 mr-1" /> Payé | مدفوع</>
+            <><CheckCircle2 className="h-3 w-3 mr-1" /> {t('Payé', 'مدفوع')}</>
           ) : (
-            <><Clock className="h-3 w-3 mr-1" /> En attente | معلق</>
+            <><Clock className="h-3 w-3 mr-1" /> {t('En attente', 'معلق')}</>
           )}
         </Badge>
       ),
     },
     {
       key: 'payment',
-      header: 'Mode | طريقة الدفع',
+      header: t('Mode', 'طريقة الدفع'),
       render: (bl: BonLivraison) => {
         if (!bl.payment) return '-';
         return (
@@ -229,7 +229,7 @@ export default function Vente() {
     },
     {
       key: 'actions',
-      header: 'Actions | إجراءات',
+      header: t('Actions', 'إجراءات'),
       render: (bl: BonLivraison) => {
         const client = clients.find(c => c.id === bl.clientId);
         return (
@@ -240,7 +240,7 @@ export default function Vente() {
                 variant="outline"
                 onClick={() => openPaymentDialog(bl)}
               >
-                Régler | دفع
+                {t('Régler', 'دفع')}
               </Button>
             )}
             {client && (
