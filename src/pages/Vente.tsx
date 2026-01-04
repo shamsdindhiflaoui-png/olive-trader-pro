@@ -49,7 +49,8 @@ export default function Vente() {
     compensation: <ArrowRightLeft className="h-4 w-4" />,
   };
   const { 
-    clients, 
+    clients,
+    clientsGros,
     reservoirs, 
     bonsLivraison,
     settings,
@@ -118,8 +119,11 @@ export default function Vente() {
     });
 
     if (bl) {
-      const client = clients.find(c => c.id === saleForm.clientId);
-      setLastCreatedBL({ bl, client });
+      // Find client in either list
+      const client = clients.find(c => c.id === saleForm.clientId) || 
+                     clientsGros.find(c => c.id === saleForm.clientId);
+      const clientName = client ? ('name' in client ? client.name : client.raisonSociale) : '';
+      setLastCreatedBL({ bl, client, clientName });
       toast.success(t(`Vente enregistrée - ${bl.number}`, `تم تسجيل البيع - ${bl.number}`));
       setSaleForm({
         clientId: '',
@@ -182,8 +186,11 @@ export default function Vente() {
       key: 'client',
       header: t('Client', 'الحريف'),
       render: (bl: BonLivraison) => {
-        const client = clients.find(c => c.id === bl.clientId);
-        return client?.name || '-';
+        const clientDetail = clients.find(c => c.id === bl.clientId);
+        const clientGros = clientsGros.find(c => c.id === bl.clientId);
+        if (clientDetail) return clientDetail.name;
+        if (clientGros) return clientGros.raisonSociale;
+        return '-';
       },
     },
     {
@@ -231,7 +238,14 @@ export default function Vente() {
       key: 'actions',
       header: t('Actions', 'إجراءات'),
       render: (bl: BonLivraison) => {
-        const client = clients.find(c => c.id === bl.clientId);
+        const clientDetail = clients.find(c => c.id === bl.clientId);
+        const clientGros = clientsGros.find(c => c.id === bl.clientId);
+        const clientForPDF = clientDetail || (clientGros ? { 
+          ...clientGros, 
+          name: clientGros.raisonSociale,
+          transactionType: 'facon' as const,
+          clientType: 'agriculteur' as const
+        } : null);
         return (
           <div className="flex items-center gap-2">
             {bl.paymentStatus === 'en_attente' && (
@@ -243,9 +257,9 @@ export default function Vente() {
                 {t('Régler', 'دفع')}
               </Button>
             )}
-            {client && (
+            {clientForPDF && (
               <PDFDownloadLink
-                document={<BonLivraisonPDF bl={bl} client={client} settings={settings} />}
+                document={<BonLivraisonPDF bl={bl} client={clientForPDF} settings={settings} />}
                 fileName={`BL_${bl.number}.pdf`}
               >
                 {({ loading }) => (
@@ -288,7 +302,7 @@ export default function Vente() {
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <span className="text-muted-foreground">{t('Client', 'الحريف')}:</span>
-                      <p className="font-medium">{lastCreatedBL.client?.name}</p>
+                      <p className="font-medium">{lastCreatedBL.clientName}</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">{t('Quantité', 'الكمية')}:</span>
@@ -303,18 +317,25 @@ export default function Vente() {
                       <p className="font-medium">{formatNumber(lastCreatedBL.bl.montantTTC)} DT</p>
                     </div>
                   </div>
-                  <PDFDownloadLink
-                    document={<BonLivraisonPDF bl={lastCreatedBL.bl} client={lastCreatedBL.client} settings={settings} />}
-                    fileName={`BL_${lastCreatedBL.bl.number}.pdf`}
-                    className="w-full"
-                  >
-                    {({ loading }) => (
-                      <Button className="w-full" variant="outline" disabled={loading}>
-                        <Download className="mr-2 h-4 w-4" />
-                        {loading ? t('Génération...', 'جاري التحميل...') : t('Télécharger le BL', 'تحميل الوصل')}
-                      </Button>
-                    )}
-                  </PDFDownloadLink>
+                  {lastCreatedBL.client && (
+                    <PDFDownloadLink
+                      document={<BonLivraisonPDF bl={lastCreatedBL.bl} client={{
+                        ...lastCreatedBL.client,
+                        name: lastCreatedBL.clientName,
+                        transactionType: 'facon' as const,
+                        clientType: 'agriculteur' as const
+                      }} settings={settings} />}
+                      fileName={`BL_${lastCreatedBL.bl.number}.pdf`}
+                      className="w-full"
+                    >
+                      {({ loading }) => (
+                        <Button className="w-full" variant="outline" disabled={loading}>
+                          <Download className="mr-2 h-4 w-4" />
+                          {loading ? t('Génération...', 'جاري التحميل...') : t('Télécharger le BL', 'تحميل الوصل')}
+                        </Button>
+                      )}
+                    </PDFDownloadLink>
+                  )}
                   <Button className="w-full" onClick={() => setLastCreatedBL(null)}>
                     {t('Nouvelle vente', 'بيع جديد')}
                   </Button>
@@ -331,11 +352,30 @@ export default function Vente() {
                         <SelectValue placeholder={t("Sélectionner un client...", "اختر حريفاً...")} />
                       </SelectTrigger>
                       <SelectContent>
-                        {clients.map((client) => (
-                          <SelectItem key={client.id} value={client.id}>
-                            {client.name} ({client.code})
-                          </SelectItem>
-                        ))}
+                        {clientsGros.length > 0 && (
+                          <>
+                            <SelectItem value="__header_gros" disabled className="font-semibold text-primary">
+                              {t('— Clients Gros —', '— حرفاء الجملة —')}
+                            </SelectItem>
+                            {clientsGros.map((client) => (
+                              <SelectItem key={client.id} value={client.id}>
+                                {client.raisonSociale} ({client.code})
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
+                        {clients.length > 0 && (
+                          <>
+                            <SelectItem value="__header_detail" disabled className="font-semibold text-muted-foreground">
+                              {t('— Clients Détail —', '— حرفاء التفصيل —')}
+                            </SelectItem>
+                            {clients.map((client) => (
+                              <SelectItem key={client.id} value={client.id}>
+                                {client.name} ({client.code})
+                              </SelectItem>
+                            ))}
+                          </>
+                        )}
                       </SelectContent>
                     </Select>
                   </div>
