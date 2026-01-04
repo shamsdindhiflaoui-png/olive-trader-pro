@@ -30,28 +30,31 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { useAppStore } from '@/store/appStore';
+import { useLanguageStore } from '@/store/languageStore';
 import { Reservoir, BonReception, Trituration, StockMovement } from '@/types';
 import { Plus, Database, Droplets, ArrowRightLeft, ShoppingCart, History, FileText, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { fr, ar } from 'date-fns/locale';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { BonLivraisonPDF } from '@/components/pdf/BonLivraisonPDF';
 
-const transactionTypeLabels = {
-  facon: 'Façon (Service) | خدمة',
-  bawaza: 'Bawaza | باوازا',
-  achat_base: 'Achat à la base | شراء من المصدر',
-};
-
-const movementTypeLabels = {
-  entree: 'Entrée | دخول',
-  sortie_vente: 'Vente | بيع',
-  transfert_in: 'Transfert entrant | تحويل وارد',
-  transfert_out: 'Transfert sortant | تحويل صادر',
-};
-
 const Stock = () => {
+  const { t, language } = useLanguageStore();
+  const dateLocale = language === 'ar' ? ar : fr;
+
+  const transactionTypeLabels = {
+    facon: t('Façon (Service)', 'خدمة'),
+    bawaza: t('Bawaza', 'باوازا'),
+    achat_base: t('Achat à la base', 'شراء من المصدر'),
+  };
+
+  const movementTypeLabels = {
+    entree: t('Entrée', 'دخول'),
+    sortie_vente: t('Vente', 'بيع'),
+    transfert_in: t('Transfert entrant', 'تحويل وارد'),
+    transfert_out: t('Transfert sortant', 'تحويل صادر'),
+  };
   const { 
     clients, 
     bonsReception, 
@@ -394,8 +397,8 @@ const Stock = () => {
   return (
     <MainLayout>
       <PageHeader 
-        title="Gestion du Stock | إدارة المخزون" 
-        description="Gérez vos réservoirs, transferts et ventes d'huile | إدارة الخزانات والتحويلات والمبيعات"
+        title={t('Gestion du Stock', 'إدارة المخزون')} 
+        description={t("Gérez vos réservoirs, transferts et ventes d'huile", 'إدارة الخزانات والتحويلات والمبيعات')}
         action={
           <div className="flex gap-2">
             <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>

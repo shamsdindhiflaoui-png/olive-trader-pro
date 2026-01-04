@@ -25,15 +25,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAppStore } from '@/store/appStore';
+import { useLanguageStore } from '@/store/languageStore';
 import { BonReception, Trituration as TriturationT } from '@/types';
-import { Factory, Droplets, Scale, Calendar, Filter, Search, User, FileDown } from 'lucide-react';
+import { Factory, Droplets, Scale, Calendar, Filter, Search, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
 import { BREnCoursPDF } from '@/components/pdf/BREnCoursPDF';
-import { fr } from 'date-fns/locale';
+import { fr, ar } from 'date-fns/locale';
 
 const Trituration = () => {
+  const { t, language } = useLanguageStore();
+  const dateLocale = language === 'ar' ? ar : fr;
   const { clients, bonsReception, triturations, addTrituration, settings } = useAppStore();
   const [selectedBR, setSelectedBR] = useState<BonReception | null>(null);
   const [formData, setFormData] = useState({
@@ -281,14 +284,14 @@ const Trituration = () => {
   return (
     <MainLayout>
       <PageHeader 
-        title="Trituration | العصر" 
-        description="Transformez les olives en huile et suivez l'historique | حول الزيتون إلى زيت وتابع السجل"
+        title={t('Trituration', 'العصر')} 
+        description={t("Transformez les olives en huile et suivez l'historique", 'حول الزيتون إلى زيت وتابع السجل')}
       />
 
       <Tabs defaultValue="en-cours" className="space-y-6">
         <TabsList>
-          <TabsTrigger value="en-cours">En cours | قيد الانتظار ({openBRs.length})</TabsTrigger>
-          <TabsTrigger value="historique">Historique | السجل ({triturations.length})</TabsTrigger>
+          <TabsTrigger value="en-cours">{t('En cours', 'قيد الانتظار')} ({openBRs.length})</TabsTrigger>
+          <TabsTrigger value="historique">{t('Historique', 'السجل')} ({triturations.length})</TabsTrigger>
         </TabsList>
 
         {/* Onglet BR en attente */}

@@ -21,21 +21,18 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAppStore } from '@/store/appStore';
+import { useLanguageStore } from '@/store/languageStore';
 import { Client, TransactionType } from '@/types';
-import { Plus, Pencil, Trash2, FileText, Download } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { ClientFicheDialog } from '@/components/clients/ClientFicheDialog';
 import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
 import { AllClientsExtraitPDF } from '@/components/pdf/AllClientsExtraitPDF';
 
-const clientTypeLabels: Record<TransactionType, string> = {
-  facon: 'Façon (Service) | خدمة',
-  bawaza: 'Bawaza | باوازا',
-  achat_base: 'Achat à la base | شراء من المصدر',
-};
-
 const Clients = () => {
   const { clients, clientOperations, bonsReception, paymentReceipts, settings, addClient, updateClient, deleteClient } = useAppStore();
+  const { t, language } = useLanguageStore();
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [ficheClient, setFicheClient] = useState<Client | null>(null);
@@ -45,6 +42,12 @@ const Clients = () => {
     phone: '',
     observations: '',
   });
+
+  const clientTypeLabels: Record<TransactionType, string> = {
+    facon: t('Façon (Service)', 'خدمة'),
+    bawaza: t('Bawaza', 'باوازا'),
+    achat_base: t('Achat à la base', 'شراء من المصدر'),
+  };
 
   const resetForm = () => {
     setFormData({
@@ -60,16 +63,16 @@ const Clients = () => {
     e.preventDefault();
     
     if (!formData.name.trim()) {
-      toast.error('Le nom du client est obligatoire | اسم الحريف إجباري');
+      toast.error(t('Le nom du client est obligatoire', 'اسم الحريف إجباري'));
       return;
     }
 
     if (editingClient) {
       updateClient(editingClient.id, formData);
-      toast.success('Client modifié avec succès | تم تعديل الحريف بنجاح');
+      toast.success(t('Client modifié avec succès', 'تم تعديل الحريف بنجاح'));
     } else {
       addClient(formData);
-      toast.success('Client ajouté avec succès | تم إضافة الحريف بنجاح');
+      toast.success(t('Client ajouté avec succès', 'تم إضافة الحريف بنجاح'));
     }
 
     setIsDialogOpen(false);
@@ -88,13 +91,12 @@ const Clients = () => {
   };
 
   const handleDelete = (client: Client) => {
-    if (confirm(`Êtes-vous sûr de vouloir supprimer le client "${client.name}" ? | هل أنت متأكد من حذف الحريف؟`)) {
+    if (confirm(t(`Êtes-vous sûr de vouloir supprimer le client "${client.name}" ?`, `هل أنت متأكد من حذف الحريف "${client.name}"؟`))) {
       deleteClient(client.id);
-      toast.success('Client supprimé avec succès | تم حذف الحريف بنجاح');
+      toast.success(t('Client supprimé avec succès', 'تم حذف الحريف بنجاح'));
     }
   };
 
-  // Calculate client totals
   const getClientTotals = (clientId: string) => {
     const ops = clientOperations.filter(op => op.clientId === clientId);
     const brs = bonsReception.filter(br => br.clientId === clientId);
@@ -108,7 +110,6 @@ const Clients = () => {
     return { capitalDT, avanceDT, brKg, totalPayments };
   };
 
-  // Prepare all clients data for PDF
   const allClientsData = clients.map(client => {
     const totals = getClientTotals(client.id);
     return {
@@ -122,15 +123,15 @@ const Clients = () => {
   const columns = [
     { 
       key: 'code', 
-      header: 'Code | الرمز',
+      header: t('Code', 'الرمز'),
       render: (client: Client) => (
         <span className="font-medium text-primary">{client.code}</span>
       )
     },
-    { key: 'name', header: 'Nom / Raison sociale | الاسم' },
+    { key: 'name', header: t('Nom / Raison sociale', 'الاسم') },
     { 
       key: 'transactionType', 
-      header: 'Type Client | نوع الحريف',
+      header: t('Type Client', 'نوع الحريف'),
       render: (client: Client) => (
         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
           {clientTypeLabels[client.transactionType]}
@@ -139,7 +140,7 @@ const Clients = () => {
     },
     { 
       key: 'capitalDT', 
-      header: 'Capital (DT) | رأس المال',
+      header: t('Capital (DT)', 'رأس المال'),
       render: (client: Client) => {
         const { capitalDT } = getClientTotals(client.id);
         return capitalDT > 0 ? <span className="font-medium">{capitalDT.toFixed(2)}</span> : '-';
@@ -147,7 +148,7 @@ const Clients = () => {
     },
     { 
       key: 'avanceDT', 
-      header: 'Avance (DT) | التسبقة',
+      header: t('Avance (DT)', 'التسبقة'),
       render: (client: Client) => {
         const { avanceDT } = getClientTotals(client.id);
         return avanceDT > 0 ? <span className="font-medium">{avanceDT.toFixed(2)}</span> : '-';
@@ -155,7 +156,7 @@ const Clients = () => {
     },
     { 
       key: 'brKg', 
-      header: 'BR (kg) | الوصولات',
+      header: t('BR (kg)', 'الوصولات'),
       render: (client: Client) => {
         const { brKg } = getClientTotals(client.id);
         return brKg > 0 ? <span className="font-medium">{brKg.toLocaleString()}</span> : '-';
@@ -163,14 +164,14 @@ const Clients = () => {
     },
     { 
       key: 'actions', 
-      header: 'Actions | إجراءات',
+      header: t('Actions', 'إجراءات'),
       render: (client: Client) => (
         <div className="flex items-center gap-2">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={(e) => { e.stopPropagation(); setFicheClient(client); }}
-            title="Voir la fiche | عرض البطاقة"
+            title={t('Voir la fiche', 'عرض البطاقة')}
           >
             <FileText className="h-4 w-4" />
           </Button>
@@ -197,42 +198,42 @@ const Clients = () => {
   return (
     <MainLayout>
       <PageHeader 
-        title="Gestion des Clients | إدارة الحرفاء" 
-        description="Gérez votre portefeuille clients | إدارة محفظة حرفائك"
+        title={t('Gestion des Clients', 'إدارة الحرفاء')} 
+        description={t('Gérez votre portefeuille clients', 'إدارة محفظة حرفائك')}
         action={
           <div className="flex items-center gap-3">
             <PDFDownloadButton
               document={<AllClientsExtraitPDF clients={allClientsData} companyName={settings.companyName} />}
               fileName={`extrait-complet-clients-${new Date().toISOString().split('T')[0]}.pdf`}
-              label="Générer l'extrait PDF | تحميل PDF"
+              label={t('Générer PDF', 'تحميل PDF')}
               variant="outline"
             />
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
               <DialogTrigger asChild>
                 <Button>
                   <Plus className="mr-2 h-4 w-4" />
-                  Nouveau Client | حريف جديد
+                  {t('Nouveau Client', 'حريف جديد')}
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                   <DialogTitle className="font-serif">
-                    {editingClient ? 'Modifier le client | تعديل الحريف' : 'Nouveau client | حريف جديد'}
+                    {editingClient ? t('Modifier le client', 'تعديل الحريف') : t('Nouveau client', 'حريف جديد')}
                   </DialogTitle>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name">Nom / Raison sociale * | الاسم *</Label>
+                    <Label htmlFor="name">{t('Nom / Raison sociale *', 'الاسم *')}</Label>
                     <Input
                       id="name"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                      placeholder="Entrez le nom du client | أدخل اسم الحريف"
+                      placeholder={t('Entrez le nom du client', 'أدخل اسم الحريف')}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="transactionType">Type Client * | نوع الحريف *</Label>
+                    <Label htmlFor="transactionType">{t('Type Client *', 'نوع الحريف *')}</Label>
                     <Select
                       value={formData.transactionType}
                       onValueChange={(value: TransactionType) => 
@@ -243,40 +244,40 @@ const Clients = () => {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="facon">Façon (Service) | خدمة</SelectItem>
-                        <SelectItem value="bawaza">Bawaza | باوازا</SelectItem>
-                        <SelectItem value="achat_base">Achat à la base | شراء من المصدر</SelectItem>
+                        <SelectItem value="facon">{t('Façon (Service)', 'خدمة')}</SelectItem>
+                        <SelectItem value="bawaza">{t('Bawaza', 'باوازا')}</SelectItem>
+                        <SelectItem value="achat_base">{t('Achat à la base', 'شراء من المصدر')}</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="phone">Téléphone | الهاتف</Label>
+                    <Label htmlFor="phone">{t('Téléphone', 'الهاتف')}</Label>
                     <Input
                       id="phone"
                       value={formData.phone}
                       onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      placeholder="Numéro de téléphone | رقم الهاتف"
+                      placeholder={t('Numéro de téléphone', 'رقم الهاتف')}
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="observations">Observations | ملاحظات</Label>
+                    <Label htmlFor="observations">{t('Observations', 'ملاحظات')}</Label>
                     <Textarea
                       id="observations"
                       value={formData.observations}
                       onChange={(e) => setFormData({ ...formData, observations: e.target.value })}
-                      placeholder="Notes additionnelles... | ملاحظات إضافية..."
+                      placeholder={t('Notes additionnelles...', 'ملاحظات إضافية...')}
                       rows={3}
                     />
                   </div>
 
                   <div className="flex justify-end gap-3 pt-4">
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                      Annuler | إلغاء
+                      {t('Annuler', 'إلغاء')}
                     </Button>
                     <Button type="submit">
-                      {editingClient ? 'Enregistrer | حفظ' : 'Créer | إنشاء'}
+                      {editingClient ? t('Enregistrer', 'حفظ') : t('Créer', 'إنشاء')}
                     </Button>
                   </div>
                 </form>
@@ -289,10 +290,9 @@ const Clients = () => {
       <DataTable
         columns={columns}
         data={clients}
-        emptyMessage="Aucun client enregistré. Cliquez sur 'Nouveau Client' pour commencer. | لا يوجد حرفاء مسجلين"
+        emptyMessage={t("Aucun client enregistré. Cliquez sur 'Nouveau Client' pour commencer.", 'لا يوجد حرفاء مسجلين')}
       />
 
-      {/* Client Fiche Dialog for all clients */}
       {ficheClient && (
         <ClientFicheDialog
           client={ficheClient}

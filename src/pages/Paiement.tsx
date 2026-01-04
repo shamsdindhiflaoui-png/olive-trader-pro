@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { fr, ar } from 'date-fns/locale';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { DataTable } from '@/components/ui/data-table';
@@ -14,8 +14,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { StatCard } from '@/components/ui/stat-card';
 import { useAppStore } from '@/store/appStore';
+import { useLanguageStore } from '@/store/languageStore';
 import { useToast } from '@/hooks/use-toast';
-import { Receipt, FileText, CheckCircle2, Clock, CreditCard, Wallet, ArrowRightLeft, Download } from 'lucide-react';
+import { Receipt, FileText, CheckCircle2, Clock, CreditCard, Wallet, ArrowRightLeft } from 'lucide-react';
 import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
 import { PaymentReceiptPDF } from '@/components/pdf/PaymentReceiptPDF';
 import { TransactionType, PaymentMode, PaymentReceipt } from '@/types';
@@ -32,19 +33,21 @@ interface BRToPay {
   isPaid: boolean;
 }
 
-const transactionTypeLabels: Record<TransactionType, string> = {
-  facon: 'Façon | خدمة',
-  bawaza: 'Bawaza | باوازا',
-  achat_base: 'Achat Base | شراء',
-};
-
-const paymentModeLabels: Record<PaymentMode, string> = {
-  especes: 'Espèces | نقداً',
-  virement: 'Virement | تحويل',
-  compensation: 'Compensation | مقاصة',
-};
-
 export default function Paiement() {
+  const { t, language } = useLanguageStore();
+  const dateLocale = language === 'ar' ? ar : fr;
+
+  const transactionTypeLabels: Record<TransactionType, string> = {
+    facon: t('Façon', 'خدمة'),
+    bawaza: t('Bawaza', 'باوازا'),
+    achat_base: t('Achat Base', 'شراء'),
+  };
+
+  const paymentModeLabels: Record<PaymentMode, string> = {
+    especes: t('Espèces', 'نقداً'),
+    virement: t('Virement', 'تحويل'),
+    compensation: t('Compensation', 'مقاصة'),
+  };
   const { bonsReception, triturations, clients, paymentReceipts, settings, addPaymentReceipt } = useAppStore();
 
   const getClientForReceipt = (receipt: PaymentReceipt | null) => {
@@ -382,8 +385,8 @@ export default function Paiement() {
   return (
     <MainLayout>
       <PageHeader 
-        title="Paiement | الدفع"
-        description="Gestion des règlements des bons de réception | إدارة تسديد وصولات الاستلام"
+        title={t('Paiement', 'الدفع')}
+        description={t('Gestion des règlements des bons de réception', 'إدارة تسديد وصولات الاستلام')}
       />
 
       {/* Stats */}

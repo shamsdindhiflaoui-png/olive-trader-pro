@@ -1,3 +1,5 @@
+import { useLanguageStore } from '@/store/languageStore';
+
 interface PageHeaderProps {
   title: string;
   description?: string;
@@ -5,8 +7,10 @@ interface PageHeaderProps {
 }
 
 export function PageHeader({ title, description, action }: PageHeaderProps) {
+  const { language } = useLanguageStore();
+  
   return (
-    <div className="mb-8 flex items-center justify-between">
+    <div className="mb-8 flex items-center justify-between" dir={language === 'ar' ? 'rtl' : 'ltr'}>
       <div>
         <h1 className="font-serif text-3xl font-semibold text-foreground">{title}</h1>
         {description && (
