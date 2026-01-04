@@ -214,8 +214,8 @@ const Stock = () => {
     const capaciteLibre = selectedRes.capaciteMax - selectedRes.quantiteActuelle;
     if (quantity > capaciteLibre) {
       toast.error(t(
-        `Capacité insuffisante. Maximum: ${capaciteLibre.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L`,
-        `السعة غير كافية. الحد الأقصى: ${capaciteLibre.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} لتر`
+        `Capacité insuffisante. Maximum: ${capaciteLibre.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg`,
+        `السعة غير كافية. الحد الأقصى: ${capaciteLibre.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} كغ`
       ));
       return;
     }
@@ -231,8 +231,8 @@ const Stock = () => {
 
     if (quantity > resteAAffecterAvant) {
       toast.error(t(
-        `Quantité supérieure au reste à affecter (${resteAAffecterAvant.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L)`,
-        `الكمية أكبر من المتبقي للتخصيص (${resteAAffecterAvant.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} لتر)`
+        `Quantité supérieure au reste à affecter (${resteAAffecterAvant.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg)`,
+        `الكمية أكبر من المتبقي للتخصيص (${resteAAffecterAvant.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} كغ)`
       ));
       return;
     }
@@ -248,8 +248,8 @@ const Stock = () => {
       const resteApres = resteAAffecterAvant - quantity;
       if (resteApres > 0) {
         toast.success(t(
-          `Affectation réussie. Reste à affecter: ${resteApres.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L`,
-          `تم التخصيص بنجاح. المتبقي للتخصيص: ${resteApres.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} لتر`
+          `Affectation réussie. Reste à affecter: ${resteApres.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg`,
+          `تم التخصيص بنجاح. المتبقي للتخصيص: ${resteApres.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} كغ`
         ));
       } else {
         toast.success(t('Affectation complète du BR', 'تم تخصيص الوصل بالكامل'));
@@ -371,12 +371,12 @@ const Stock = () => {
     { 
       key: 'capaciteMax', 
       header: t('Capacité Max', 'السعة القصوى'),
-      render: (r: Reservoir) => `${r.capaciteMax.toLocaleString()} L`
+      render: (r: Reservoir) => `${r.capaciteMax.toLocaleString()} kg`
     },
     { 
       key: 'quantiteActuelle', 
       header: t('Quantité Actuelle', 'الكمية الحالية'),
-      render: (r: Reservoir) => `${r.quantiteActuelle.toLocaleString()} L`
+      render: (r: Reservoir) => `${r.quantiteActuelle.toLocaleString()} kg`
     },
     { 
       key: 'fill', 
@@ -469,7 +469,7 @@ const Stock = () => {
         const isPositive = m.type === 'entree' || m.type === 'transfert_in';
         return (
           <span className={isPositive ? 'text-success font-medium' : 'text-warning font-medium'}>
-            {isPositive ? '+' : '-'}{m.quantite.toLocaleString()} L
+            {isPositive ? '+' : '-'}{m.quantite.toLocaleString()} kg
           </span>
         );
       },
@@ -534,7 +534,7 @@ const Stock = () => {
                       <SelectContent>
                         {reservoirs.filter(r => r.quantiteActuelle > 0).map((r) => (
                           <SelectItem key={r.id} value={r.id}>
-                            {r.code} - {r.quantiteActuelle.toLocaleString()} L {t('disponibles', 'متاح')}
+                            {r.code} - {r.quantiteActuelle.toLocaleString()} kg {t('disponibles', 'متاح')}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -552,14 +552,14 @@ const Stock = () => {
                       <SelectContent>
                         {reservoirs.filter(r => r.status !== 'plein').map((r) => (
                           <SelectItem key={r.id} value={r.id}>
-                            {r.code} - {t('Libre', 'فارغ')}: {(r.capaciteMax - r.quantiteActuelle).toLocaleString()} L
+                            {r.code} - {t('Libre', 'فارغ')}: {(r.capaciteMax - r.quantiteActuelle).toLocaleString()} kg
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label>{t('Quantité à transférer (L) *', 'الكمية للتحويل *')}</Label>
+                    <Label>{t('Quantité à transférer (kg) *', 'الكمية للتحويل (كغ) *')}</Label>
                     <Input
                       type="number"
                       value={transferForm.quantite}
@@ -600,7 +600,7 @@ const Stock = () => {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="capacite">{t('Capacité maximale (litres) *', 'السعة القصوى *')}</Label>
+                    <Label htmlFor="capacite">{t('Capacité maximale (kg) *', 'السعة القصوى (كغ) *')}</Label>
                     <Input
                       id="capacite"
                       type="number"
@@ -636,8 +636,8 @@ const Stock = () => {
       <div className="grid gap-4 md:grid-cols-4 mb-6">
         <StatCard
           title={t('Stock Total', 'المخزون الإجمالي')}
-          value={`${stats.totalStock.toLocaleString()} L`}
-          subtitle={`${t('Capacité', 'السعة')}: ${stats.totalCapacity.toLocaleString()} L`}
+          value={`${stats.totalStock.toLocaleString()} kg`}
+          subtitle={`${t('Capacité', 'السعة')}: ${stats.totalCapacity.toLocaleString()} kg`}
           icon={Database}
         />
         <StatCard
@@ -648,13 +648,13 @@ const Stock = () => {
         />
         <StatCard
           title={t('Entrées (période)', 'المدخلات')}
-          value={`${stats.totalEntries.toLocaleString()} L`}
+          value={`${stats.totalEntries.toLocaleString()} kg`}
           subtitle={t('Huile entrée en stock', 'الزيت المدخل')}
           icon={ArrowRightLeft}
         />
         <StatCard
           title={t('Ventes (période)', 'المبيعات')}
-          value={`${stats.totalSales.toLocaleString()} L`}
+          value={`${stats.totalSales.toLocaleString()} kg`}
           subtitle={t('Huile vendue', 'الزيت المباع')}
           icon={Droplets}
         />
@@ -722,11 +722,11 @@ const Stock = () => {
                       </div>
                       <div className="text-sm">
                         <span className="text-muted-foreground">{t('Huile produite', 'الزيت المنتج')}: </span>
-                        <span className="font-medium">{trit.quantiteHuile.toLocaleString()} L</span>
+                        <span className="font-medium">{trit.quantiteHuile.toLocaleString()} kg</span>
                       </div>
                       <div className="text-sm">
                         <span className="text-muted-foreground">{t('Reste à affecter', 'المتبقي للتخصيص')}: </span>
-                        <span className="font-semibold text-warning">{remaining.toFixed(1)} L</span>
+                        <span className="font-semibold text-warning">{remaining.toFixed(1)} kg</span>
                       </div>
                       {reservoirs.filter(r => r.status !== 'plein').length === 0 ? (
                         <div className="text-center mt-2">
@@ -861,17 +861,17 @@ const Stock = () => {
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-muted-foreground">Huile obtenue | الزيت المتحصل عليه</span>
-                    <span className="font-semibold text-primary">{selectedTrit.trit.quantiteHuile.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L</span>
+                    <span className="font-semibold text-primary">{selectedTrit.trit.quantiteHuile.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg</span>
                   </div>
                   {totalDejaAffecte > 0 && (
                     <div className="flex justify-between text-sm pt-2 border-t border-border">
                       <span className="text-muted-foreground">Déjà affecté | تم تخصيصه</span>
-                      <span className="font-medium text-success">{totalDejaAffecte.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L</span>
+                      <span className="font-medium text-success">{totalDejaAffecte.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg</span>
                     </div>
                   )}
                   <div className="flex justify-between text-sm bg-warning/10 p-2 rounded -mx-2">
                     <span className="font-medium text-warning">Reste à affecter | المتبقي للتخصيص</span>
-                    <span className="font-bold text-warning">{resteAAfffecter.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L</span>
+                    <span className="font-bold text-warning">{resteAAfffecter.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg</span>
                   </div>
                 </div>
 
@@ -887,14 +887,14 @@ const Stock = () => {
                     <SelectContent>
                       {reservoirs.filter(r => r.status !== 'plein').map((r) => (
                         <SelectItem key={r.id} value={r.id}>
-                          {r.code} - Dispo | متاح: {(r.capaciteMax - r.quantiteActuelle).toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L
+                          {r.code} - Dispo | متاح: {(r.capaciteMax - r.quantiteActuelle).toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                   {selectedRes && (
                     <p className="text-xs text-muted-foreground">
-                      Capacité libre: <span className="font-semibold text-primary">{capaciteLibre.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L</span>
+                      Capacité libre: <span className="font-semibold text-primary">{capaciteLibre.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg</span>
                       {capaciteLibre < resteAAfffecter && (
                         <span className="text-warning ml-2">
                           (Insuffisant pour tout affecter, le reste ira dans un autre réservoir)
@@ -906,7 +906,7 @@ const Stock = () => {
 
                 <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <Label>Quantité à affecter (litres) * | الكمية للتخصيص *</Label>
+                    <Label>Quantité à affecter (kg) * | الكمية للتخصيص (كغ) *</Label>
                     {selectedRes && (
                       <Button
                         type="button"
@@ -915,7 +915,7 @@ const Stock = () => {
                         className="text-xs h-6 px-2"
                         onClick={() => setAffectForm({ ...affectForm, quantite: maxAffectable.toFixed(3) })}
                       >
-                        Max: {maxAffectable.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L
+                        Max: {maxAffectable.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg
                       </Button>
                     )}
                   </div>
@@ -989,11 +989,11 @@ const Stock = () => {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="p-4 rounded-lg bg-muted">
                     <p className="text-sm text-muted-foreground">{t('Capacité Max', 'السعة القصوى')}</p>
-                    <p className="text-xl font-semibold">{selectedReservoirDetail.capaciteMax.toLocaleString()} L</p>
+                    <p className="text-xl font-semibold">{selectedReservoirDetail.capaciteMax.toLocaleString()} kg</p>
                   </div>
                   <div className="p-4 rounded-lg bg-muted">
                     <p className="text-sm text-muted-foreground">{t('Quantité Actuelle', 'الكمية الحالية')}</p>
-                    <p className="text-xl font-semibold text-primary">{selectedReservoirDetail.quantiteActuelle.toLocaleString()} L</p>
+                    <p className="text-xl font-semibold text-primary">{selectedReservoirDetail.quantiteActuelle.toLocaleString()} kg</p>
                   </div>
                 </div>
 
@@ -1020,7 +1020,7 @@ const Stock = () => {
                     <div>
                       <p className="text-xs text-orange-600">{t('Quantité achetée', 'الكمية المشتراة')}</p>
                       <p className="text-lg font-bold text-orange-800">
-                        {details.totalQuantiteAchetee.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L
+                        {details.totalQuantiteAchetee.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg
                       </p>
                     </div>
                     <div>
@@ -1069,7 +1069,7 @@ const Stock = () => {
                               <td className="px-3 py-2">{format(new Date(entry.date), 'dd/MM/yyyy', { locale: dateLocale })}</td>
                               <td className="px-3 py-2 font-medium text-primary">{entry.brNumber}</td>
                               <td className="px-3 py-2">{entry.clientName}</td>
-                              <td className="px-3 py-2 text-right">{entry.quantite.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L</td>
+                              <td className="px-3 py-2 text-right">{entry.quantite.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg</td>
                               <td className="px-3 py-2 text-right text-orange-600 font-medium">{entry.prixUnitaire.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT</td>
                               <td className="px-3 py-2 text-right font-semibold">{entry.montant.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT</td>
                             </tr>
@@ -1078,7 +1078,7 @@ const Stock = () => {
                         <tfoot className="bg-orange-100">
                           <tr className="font-semibold text-orange-800">
                             <td colSpan={3} className="px-3 py-2">{t('TOTAL', 'المجموع')}</td>
-                            <td className="px-3 py-2 text-right">{details.totalQuantiteAchetee.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L</td>
+                            <td className="px-3 py-2 text-right">{details.totalQuantiteAchetee.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg</td>
                             <td className="px-3 py-2 text-right">{details.prixMoyen.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT</td>
                             <td className="px-3 py-2 text-right">{details.totalMontant.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT</td>
                           </tr>

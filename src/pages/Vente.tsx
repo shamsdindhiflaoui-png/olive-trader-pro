@@ -196,7 +196,7 @@ export default function Vente() {
     {
       key: 'quantite',
       header: t('Quantité', 'الكمية'),
-      render: (bl: BonLivraison) => `${formatNumber(bl.quantite)} L`,
+      render: (bl: BonLivraison) => `${formatNumber(bl.quantite)} kg`,
     },
     {
       key: 'prixUnitaire',
@@ -306,11 +306,11 @@ export default function Vente() {
                     </div>
                     <div>
                       <span className="text-muted-foreground">{t('Quantité', 'الكمية')}:</span>
-                      <p className="font-medium">{formatNumber(lastCreatedBL.bl.quantite)} L</p>
+                      <p className="font-medium">{formatNumber(lastCreatedBL.bl.quantite)} kg</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">{t('Prix unitaire', 'السعر')}:</span>
-                      <p className="font-medium">{formatNumber(lastCreatedBL.bl.prixUnitaire)} DT/L</p>
+                      <p className="font-medium">{formatNumber(lastCreatedBL.bl.prixUnitaire)} DT/kg</p>
                     </div>
                     <div>
                       <span className="text-muted-foreground">{t('Montant TTC', 'المبلغ')}:</span>
@@ -391,7 +391,7 @@ export default function Vente() {
                       <SelectContent>
                         {reservoirs.filter(r => r.quantiteActuelle > 0).map((r) => (
                           <SelectItem key={r.id} value={r.id}>
-                            {r.code} - {formatNumber(r.quantiteActuelle)} L {t('disponibles', 'متاح')}
+                            {r.code} - {formatNumber(r.quantiteActuelle)} kg {t('disponibles', 'متاح')}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -399,7 +399,7 @@ export default function Vente() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>{t('Quantité (L) *', 'الكمية (ل) *')}</Label>
+                      <Label>{t('Quantité (kg) *', 'الكمية (كغ) *')}</Label>
                       <Input
                         type="number"
                         value={saleForm.quantite}
@@ -409,7 +409,7 @@ export default function Vente() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label>{t('Prix unitaire (DT/L) *', 'السعر (د.ت/ل) *')}</Label>
+                      <Label>{t('Prix unitaire (DT/kg) *', 'السعر (د.ت/كغ) *')}</Label>
                       <Input
                         type="number"
                         value={saleForm.prixUnitaire}
