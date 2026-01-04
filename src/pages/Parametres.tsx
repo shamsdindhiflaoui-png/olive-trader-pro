@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAppStore } from '@/store/appStore';
 import { useLanguageStore } from '@/store/languageStore';
-import { Settings as SettingsIcon, Building2, CreditCard, Percent } from 'lucide-react';
+import { Settings as SettingsIcon, Building2, CreditCard } from 'lucide-react';
 import { toast } from 'sonner';
 
 const Parametres = () => {
@@ -20,7 +20,6 @@ const Parametres = () => {
     phone: settings.phone || '',
     defaultPrixFacon: String(settings.defaultPrixFacon),
     defaultPrixBase: String(settings.defaultPrixBase),
-    partHuilerieBawaza: String(settings.partHuilerieBawaza),
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -32,7 +31,6 @@ const Parametres = () => {
       phone: formData.phone || undefined,
       defaultPrixFacon: Number(formData.defaultPrixFacon),
       defaultPrixBase: Number(formData.defaultPrixBase),
-      partHuilerieBawaza: Number(formData.partHuilerieBawaza),
     });
 
     toast.success(t('Paramètres enregistrés avec succès', 'تم حفظ الإعدادات بنجاح'));
@@ -131,34 +129,6 @@ const Parametres = () => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 font-serif">
-              <Percent className="h-5 w-5 text-primary" />
-              {t('Paramètres Bawaza', 'إعدادات باوازا')}
-            </CardTitle>
-            <CardDescription>
-              {t("Configuration du partage de l'huile pour les transactions Bawaza", 'إعدادات تقاسم الزيت لمعاملات باوازا')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <Label htmlFor="partBawaza">{t("Part de l'huilerie (%)", 'حصة المعصرة (%)')}</Label>
-              <Input
-                id="partBawaza"
-                type="number"
-                min="0"
-                max="100"
-                value={formData.partHuilerieBawaza}
-                onChange={(e) => setFormData({ ...formData, partHuilerieBawaza: e.target.value })}
-                placeholder="20"
-              />
-              <p className="text-xs text-muted-foreground">
-                {t("Pourcentage de l'huile produite qui revient à l'huilerie (le reste revient au client)", 'نسبة الزيت المنتج التي تعود للمعصرة (الباقي للحريف)')}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
 
         <div className="flex justify-end">
           <Button type="submit" size="lg">
