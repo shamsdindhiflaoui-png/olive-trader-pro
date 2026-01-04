@@ -32,6 +32,7 @@ import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
 import { BonReceptionPDF } from '@/components/pdf/BonReceptionPDF';
 import { BREtiquettePDF } from '@/components/pdf/BREtiquettePDF';
 import { pdf } from '@react-pdf/renderer';
+import QRCode from 'qrcode';
 
 const natureLabels = {
   service: { fr: 'Service', ar: 'خدمة' },
@@ -71,8 +72,24 @@ const BonsReception = () => {
     ? Number(formData.poidsPlein) - Number(formData.poidsVide) 
     : 0;
 
+  const generateQRCode = async (br: BonReception, clientName: string): Promise<string> => {
+    const qrData = JSON.stringify({
+      br: br.number,
+      client: clientName,
+      poids: br.poidsNet,
+      date: format(br.createdAt, 'dd/MM/yyyy HH:mm:ss'),
+      nature: br.nature || 'bawaz'
+    });
+    return await QRCode.toDataURL(qrData, { 
+      width: 120,
+      margin: 1,
+      errorCorrectionLevel: 'M'
+    });
+  };
+
   const downloadEtiquette = async (br: BonReception, clientName: string) => {
     try {
+      const qrCodeDataUrl = await generateQRCode(br, clientName);
       const blob = await pdf(
         <BREtiquettePDF
           brNumber={br.number}
@@ -80,6 +97,7 @@ const BonsReception = () => {
           poidsNet={br.poidsNet}
           date={br.createdAt}
           nature={br.nature || 'bawaz'}
+          qrCodeDataUrl={qrCodeDataUrl}
         />
       ).toBlob();
       const url = URL.createObjectURL(blob);
