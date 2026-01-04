@@ -928,13 +928,28 @@ const Stock = () => {
                         <span className="text-muted-foreground">{t('Reste à affecter', 'المتبقي للتخصيص')}: </span>
                         <span className="font-semibold text-warning">{remaining.toFixed(1)} L</span>
                       </div>
-                      <Button 
-                        className="w-full mt-2" 
-                        onClick={() => openAffectDialog(br, trit)}
-                        disabled={reservoirs.filter(r => r.status !== 'plein').length === 0}
-                      >
-                        {t('Affecter au stock', 'تخصيص للمخزون')}
-                      </Button>
+                      {reservoirs.filter(r => r.status !== 'plein').length === 0 ? (
+                        <div className="text-center mt-2">
+                          <p className="text-xs text-destructive mb-2">
+                            {t('Aucun réservoir disponible (tous pleins)', 'لا يوجد خزان متاح (كلها ممتلئة)')}
+                          </p>
+                          <Button 
+                            className="w-full" 
+                            variant="outline"
+                            onClick={() => setIsReservoirDialogOpen(true)}
+                          >
+                            <Plus className="mr-2 h-4 w-4" />
+                            {t('Créer un réservoir', 'إنشاء خزان')}
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button 
+                          className="w-full mt-2" 
+                          onClick={() => openAffectDialog(br, trit)}
+                        >
+                          {t('Affecter au stock', 'تخصيص للمخزون')}
+                        </Button>
+                      )}
                     </CardContent>
                   </Card>
                 );
