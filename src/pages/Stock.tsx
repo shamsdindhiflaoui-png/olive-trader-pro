@@ -38,6 +38,7 @@ import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { BonLivraisonPDF } from '@/components/pdf/BonLivraisonPDF';
+import { ReservoirCostPDF } from '@/components/pdf/ReservoirCostPDF';
 
 const Stock = () => {
   const { t, language } = useLanguageStore();
@@ -1179,7 +1180,27 @@ const Stock = () => {
                   )}
                 </div>
 
-                <div className="flex justify-end">
+                <div className="flex justify-end gap-3">
+                  <PDFDownloadLink
+                    document={
+                      <ReservoirCostPDF
+                        reservoir={selectedReservoirDetail}
+                        entries={details.entries}
+                        totalQuantiteAchetee={details.totalQuantiteAchetee}
+                        totalMontant={details.totalMontant}
+                        prixMoyen={details.prixMoyen}
+                        settings={settings}
+                      />
+                    }
+                    fileName={`Cout-${selectedReservoirDetail.code}-${format(new Date(), 'yyyyMMdd')}.pdf`}
+                  >
+                    {({ loading }) => (
+                      <Button variant="default" disabled={loading}>
+                        <Download className="mr-2 h-4 w-4" />
+                        {loading ? t('Préparation...', 'جاري التحميل...') : t('Télécharger PDF', 'تحميل PDF')}
+                      </Button>
+                    )}
+                  </PDFDownloadLink>
                   <Button variant="outline" onClick={() => setIsReservoirDetailDialogOpen(false)}>
                     {t('Fermer', 'إغلاق')}
                   </Button>
