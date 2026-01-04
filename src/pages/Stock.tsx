@@ -212,19 +212,62 @@ const Stock = () => {
     }
 
     const quantity = Number(affectForm.quantite);
+    
+    // Validate quantity against reservoir capacity
+    const selectedRes = reservoirs.find(r => r.id === affectForm.reservoirId);
+    if (!selectedRes) {
+      toast.error(t('Réservoir non trouvé', 'الخزان غير موجود'));
+      return;
+    }
+    
+    const capaciteLibre = selectedRes.capaciteMax - selectedRes.quantiteActuelle;
+    if (quantity > capaciteLibre) {
+      toast.error(t(
+        `Capacité insuffisante. Maximum: ${capaciteLibre.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L`,
+        `السعة غير كافية. الحد الأقصى: ${capaciteLibre.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} لتر`
+      ));
+      return;
+    }
+
+    // Calculate remaining quantity to affect for this BR
+    const client = clients.find(c => c.id === selectedTrit.br.clientId);
+    const existingAffectations = stockAffectations.filter(a => a.brId === selectedTrit.br.id);
+    const totalDejaAffecte = existingAffectations.reduce((sum, a) => sum + a.quantite, 0);
+    const targetQuantity = client?.transactionType === 'bawaza' 
+      ? (selectedTrit.trit.quantiteHuile * settings.partHuilerieBawaza) / 100
+      : selectedTrit.trit.quantiteHuile;
+    const resteAAffecterAvant = targetQuantity - totalDejaAffecte;
+
+    if (quantity > resteAAffecterAvant) {
+      toast.error(t(
+        `Quantité supérieure au reste à affecter (${resteAAffecterAvant.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L)`,
+        `الكمية أكبر من المتبقي للتخصيص (${resteAAffecterAvant.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} لتر)`
+      ));
+      return;
+    }
+
     const success = affectToReservoir(affectForm.reservoirId, quantity, selectedTrit.br.id);
 
     if (success) {
-      // If bawaz, save the price on trituration
+      // If bawaz, save the price on trituration (only first time or update)
       if (isBawaz && affectForm.prixHuileKg) {
         updateTrituration(selectedTrit.br.id, { prixHuileKg: Number(affectForm.prixHuileKg) });
       }
-      toast.success(t('Huile affectée au réservoir avec succès', 'تم تخصيص الزيت للخزان بنجاح'));
+      
+      const resteApres = resteAAffecterAvant - quantity;
+      if (resteApres > 0) {
+        toast.success(t(
+          `Affectation réussie. Reste à affecter: ${resteApres.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L`,
+          `تم التخصيص بنجاح. المتبقي للتخصيص: ${resteApres.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} لتر`
+        ));
+      } else {
+        toast.success(t('Affectation complète du BR', 'تم تخصيص الوصل بالكامل'));
+      }
       setIsAffectDialogOpen(false);
       setSelectedTrit(null);
       setAffectForm({ reservoirId: '', quantite: '', prixHuileKg: '' });
     } else {
-      toast.error(t('Capacité du réservoir insuffisante', 'سعة الخزان غير كافية'));
+      toast.error(t('Erreur lors de l\'affectation', 'خطأ أثناء التخصيص'));
     }
   };
 
@@ -967,6 +1010,19 @@ const Stock = () => {
             const client = clients.find(c => c.id === selectedTrit.br.clientId);
             const isBawaz = selectedTrit.br.nature === 'bawaz';
             
+            // Calculate remaining quantity to affect
+            const existingAffectations = stockAffectations.filter(a => a.brId === selectedTrit.br.id);
+            const totalDejaAffecte = existingAffectations.reduce((sum, a) => sum + a.quantite, 0);
+            const targetQuantity = client?.transactionType === 'bawaza' 
+              ? (selectedTrit.trit.quantiteHuile * settings.partHuilerieBawaza) / 100
+              : selectedTrit.trit.quantiteHuile;
+            const resteAAfffecter = targetQuantity - totalDejaAffecte;
+            
+            // Get selected reservoir capacity
+            const selectedRes = reservoirs.find(r => r.id === affectForm.reservoirId);
+            const capaciteLibre = selectedRes ? (selectedRes.capaciteMax - selectedRes.quantiteActuelle) : 0;
+            const maxAffectable = Math.min(resteAAfffecter, capaciteLibre);
+            
             return (
               <form onSubmit={handleAffect} className="space-y-4">
                 <div className="p-4 rounded-lg bg-muted space-y-2">
@@ -992,6 +1048,16 @@ const Stock = () => {
                     <span className="text-muted-foreground">Huile obtenue | الزيت المتحصل عليه</span>
                     <span className="font-semibold text-primary">{selectedTrit.trit.quantiteHuile.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L</span>
                   </div>
+                  {totalDejaAffecte > 0 && (
+                    <div className="flex justify-between text-sm pt-2 border-t border-border">
+                      <span className="text-muted-foreground">Déjà affecté | تم تخصيصه</span>
+                      <span className="font-medium text-success">{totalDejaAffecte.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm bg-warning/10 p-2 rounded -mx-2">
+                    <span className="font-medium text-warning">Reste à affecter | المتبقي للتخصيص</span>
+                    <span className="font-bold text-warning">{resteAAfffecter.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L</span>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -1006,21 +1072,45 @@ const Stock = () => {
                     <SelectContent>
                       {reservoirs.filter(r => r.status !== 'plein').map((r) => (
                         <SelectItem key={r.id} value={r.id}>
-                          {r.code} - Dispo | متاح: {(r.capaciteMax - r.quantiteActuelle).toLocaleString()} L
+                          {r.code} - Dispo | متاح: {(r.capaciteMax - r.quantiteActuelle).toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                  {selectedRes && (
+                    <p className="text-xs text-muted-foreground">
+                      Capacité libre: <span className="font-semibold text-primary">{capaciteLibre.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L</span>
+                      {capaciteLibre < resteAAfffecter && (
+                        <span className="text-warning ml-2">
+                          (Insuffisant pour tout affecter, le reste ira dans un autre réservoir)
+                        </span>
+                      )}
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Quantité à affecter (litres) * | الكمية للتخصيص *</Label>
+                  <div className="flex justify-between items-center">
+                    <Label>Quantité à affecter (litres) * | الكمية للتخصيص *</Label>
+                    {selectedRes && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs h-6 px-2"
+                        onClick={() => setAffectForm({ ...affectForm, quantite: maxAffectable.toFixed(3) })}
+                      >
+                        Max: {maxAffectable.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L
+                      </Button>
+                    )}
+                  </div>
                   <Input
                     type="number"
                     value={affectForm.quantite}
                     onChange={(e) => setAffectForm({ ...affectForm, quantite: e.target.value })}
                     placeholder="0"
                     step="0.001"
+                    max={maxAffectable}
                   />
                 </div>
 
