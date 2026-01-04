@@ -12,7 +12,23 @@ export interface ClientOperation {
   quantiteKg?: number;
   reference?: string; // BR number, etc.
   observations?: string;
+  receiptNumber?: string; // Auto-generated receipt number
   createdAt: Date;
+}
+
+// Deleted operation history tracking
+export interface DeletedOperation {
+  id: string;
+  originalId: string;
+  clientId: string;
+  clientName: string;
+  type: ClientOperationType;
+  date: Date;
+  libelle: string;
+  montantDT?: number;
+  receiptNumber?: string;
+  deletedAt: Date;
+  deletedReason?: string;
 }
 
 export interface Client {

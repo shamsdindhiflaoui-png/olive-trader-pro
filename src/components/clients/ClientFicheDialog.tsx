@@ -27,12 +27,18 @@ import {
   TableRow,
   TableFooter,
 } from '@/components/ui/table';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Client, ClientOperation, ClientOperationType, BonReception, PaymentReceipt } from '@/types';
 import { useAppStore } from '@/store/appStore';
-import { Plus, Trash2, X, FileDown } from 'lucide-react';
+import { Plus, Trash2, X, FileDown, ChevronDown, History, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
 import { ClientExtraitPDF } from '@/components/pdf/ClientExtraitPDF';
+import { CapitalAvanceReceiptPDF } from '@/components/pdf/CapitalAvanceReceiptPDF';
 
 interface ClientFicheDialogProps {
   client: Client;
@@ -63,11 +69,14 @@ interface TableRow {
   huileL?: number;
   isPaid?: boolean;
   reference?: string;
+  receiptNumber?: string;
+  originalOperation?: ClientOperation;
 }
 
 export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDialogProps) {
-  const { clientOperations, bonsReception, triturations, paymentReceipts, settings, addClientOperation, deleteClientOperation } = useAppStore();
+  const { clientOperations, deletedOperations, bonsReception, triturations, paymentReceipts, settings, addClientOperation, deleteClientOperation, getDeletedOperations } = useAppStore();
   const [showAddForm, setShowAddForm] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [newOperation, setNewOperation] = useState({
     type: 'capital_fdr' as ClientOperationType,
     date: format(new Date(), 'yyyy-MM-dd'),
@@ -75,6 +84,12 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
     montantDT: '',
     observations: '',
   });
+
+  // Get deleted operations for this client
+  const clientDeletedOps = useMemo(() =>
+    deletedOperations?.filter(op => op.clientId === client.id) || [],
+    [deletedOperations, client.id]
+  );
 
   // Get all operations for this client
   const clientOps = useMemo(() => 
@@ -125,6 +140,8 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
         avanceDT: op.type === 'avance' ? op.montantDT : undefined,
         brKg: undefined,
         reference: op.reference,
+        receiptNumber: op.receiptNumber,
+        originalOperation: op,
       });
     });
 
@@ -182,7 +199,7 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
       return;
     }
 
-    addClientOperation({
+    const newOp = addClientOperation({
       clientId: client.id,
       type: newOperation.type,
       date: new Date(newOperation.date),
@@ -191,7 +208,7 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
       observations: newOperation.observations || undefined,
     });
 
-    toast.success('Opération ajoutée avec succès');
+    toast.success(`Opération ajoutée - Reçu: ${newOp.receiptNumber}`);
     setNewOperation({
       type: 'capital_fdr',
       date: format(new Date(), 'yyyy-MM-dd'),
@@ -207,9 +224,9 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
       toast.error('Les BR ne peuvent pas être supprimés depuis cette vue');
       return;
     }
-    if (confirm('Êtes-vous sûr de vouloir supprimer cette opération ?')) {
-      deleteClientOperation(id);
-      toast.success('Opération supprimée');
+    if (confirm('Êtes-vous sûr de vouloir supprimer cette opération ? Elle sera archivée dans l\'historique.')) {
+      deleteClientOperation(id, 'Suppression manuelle');
+      toast.success('Opération supprimée et archivée dans l\'historique');
     }
   };
 
@@ -328,21 +345,21 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/50">
-                  <TableHead className="w-[100px]">Date</TableHead>
-                  <TableHead>Libellé</TableHead>
+                  <TableHead className="w-[100px]">Date | التاريخ</TableHead>
+                  <TableHead>Libellé | البيان</TableHead>
                   <TableHead className="text-right w-[100px]">Capital (DT)</TableHead>
                   <TableHead className="text-right w-[100px]">Avance (DT)</TableHead>
                   <TableHead className="text-right w-[100px]">BR (kg)</TableHead>
                   <TableHead className="text-right w-[100px]">Huile (L)</TableHead>
                   <TableHead className="text-center w-[90px]">État</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead className="w-[100px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {tableRows.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      Aucune opération enregistrée
+                      Aucune opération enregistrée | لا توجد عمليات
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -352,9 +369,16 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
                         {format(row.date, 'dd/MM/yyyy', { locale: fr })}
                       </TableCell>
                       <TableCell>
-                        <span className={row.type === 'br' ? 'text-primary' : ''}>
-                          {row.libelle}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className={row.type === 'br' ? 'text-primary' : ''}>
+                            {row.libelle}
+                          </span>
+                          {row.receiptNumber && (
+                            <span className="text-xs text-muted-foreground">
+                              {row.receiptNumber}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-right font-medium">
                         {row.capitalDT !== undefined ? `${row.capitalDT.toFixed(3)}` : '-'}
@@ -380,16 +404,37 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
                         ) : '-'}
                       </TableCell>
                       <TableCell>
-                        {!row.id.startsWith('br-') && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDeleteOperation(row.id)}
-                            className="text-destructive hover:text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-1">
+                          {/* PDF Download for Capital/Avance */}
+                          {row.originalOperation && row.receiptNumber && (
+                            <PDFDownloadButton
+                              document={
+                                <CapitalAvanceReceiptPDF
+                                  operation={row.originalOperation}
+                                  client={client}
+                                  settings={settings}
+                                  receiptNumber={row.receiptNumber}
+                                />
+                              }
+                              fileName={`${row.receiptNumber}.pdf`}
+                              label=""
+                              variant="ghost"
+                              size="sm"
+                              icon={<Download className="h-4 w-4" />}
+                            />
+                          )}
+                          {/* Delete button */}
+                          {!row.id.startsWith('br-') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDeleteOperation(row.id)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))
@@ -467,6 +512,61 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
             </Table>
           </div>
 
+          {/* Historique des suppressions */}
+          {clientDeletedOps.length > 0 && (
+            <Collapsible open={showHistory} onOpenChange={setShowHistory}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between">
+                  <span className="flex items-center gap-2">
+                    <History className="h-4 w-4" />
+                    Historique des suppressions | سجل الحذف ({clientDeletedOps.length})
+                  </span>
+                  <ChevronDown className={`h-4 w-4 transition-transform ${showHistory ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <div className="border border-border rounded-lg overflow-hidden mt-2">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-red-50 dark:bg-red-900/20">
+                        <TableHead>Date | التاريخ</TableHead>
+                        <TableHead>Type | النوع</TableHead>
+                        <TableHead>Libellé | البيان</TableHead>
+                        <TableHead className="text-right">Montant (DT)</TableHead>
+                        <TableHead>N° Reçu</TableHead>
+                        <TableHead>Supprimé le</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {clientDeletedOps.map((op) => (
+                        <TableRow key={op.id} className="bg-red-50/50 dark:bg-red-900/10">
+                          <TableCell className="text-sm">
+                            {format(new Date(op.date), 'dd/MM/yyyy', { locale: fr })}
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-red-600 dark:text-red-400">
+                              {op.type === 'capital_fdr' ? 'Capital FDR' : 'Avance'}
+                            </span>
+                          </TableCell>
+                          <TableCell>{op.libelle}</TableCell>
+                          <TableCell className="text-right font-medium text-red-600 dark:text-red-400">
+                            {(op.montantDT || 0).toFixed(3)}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {op.receiptNumber || '-'}
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {format(new Date(op.deletedAt), 'dd/MM/yyyy HH:mm', { locale: fr })}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          )}
+
           {/* Bouton Export PDF */}
           <div className="flex justify-end">
             <PDFDownloadButton
@@ -480,7 +580,7 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
                 />
               }
               fileName={`extrait-${client.code}-${format(new Date(), 'yyyyMMdd')}.pdf`}
-              label="Générer l'extrait PDF"
+              label="Générer l'extrait PDF | توليد مستخرج PDF"
             />
           </div>
         </div>
