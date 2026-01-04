@@ -120,8 +120,8 @@ const BonsReception = () => {
             ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
             : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
         }`}>
-          {br.nature === 'service' ? '💰 ' : '💸 '}
-          {language === 'ar' ? natureLabels[br.nature].ar : natureLabels[br.nature].fr}
+        {br.nature === 'service' ? '💰 ' : '💸 '}
+          {language === 'ar' ? natureLabels[br.nature || 'bawaz'].ar : natureLabels[br.nature || 'bawaz'].fr}
         </span>
       )
     },
