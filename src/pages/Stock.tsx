@@ -68,6 +68,7 @@ const Stock = () => {
     affectToReservoir,
     transferBetweenReservoirs,
     addSale,
+    updateTrituration,
   } = useAppStore();
   
   const [isReservoirDialogOpen, setIsReservoirDialogOpen] = useState(false);
@@ -88,6 +89,7 @@ const Stock = () => {
   const [affectForm, setAffectForm] = useState({
     reservoirId: '',
     quantite: '',
+    prixHuileKg: '',
   });
   const [transferForm, setTransferForm] = useState({
     fromReservoirId: '',
@@ -199,14 +201,25 @@ const Stock = () => {
       return;
     }
 
+    // Check if bawaz BR requires price
+    const isBawaz = selectedTrit.br.nature === 'bawaz';
+    if (isBawaz && !affectForm.prixHuileKg) {
+      toast.error(t('Le prix par kg est obligatoire pour les BR Bawaz', 'سعر الكيلوغرام إجباري لوصولات الباواز'));
+      return;
+    }
+
     const quantity = Number(affectForm.quantite);
     const success = affectToReservoir(affectForm.reservoirId, quantity, selectedTrit.br.id);
 
     if (success) {
+      // If bawaz, save the price on trituration
+      if (isBawaz && affectForm.prixHuileKg) {
+        updateTrituration(selectedTrit.br.id, { prixHuileKg: Number(affectForm.prixHuileKg) });
+      }
       toast.success(t('Huile affectée au réservoir avec succès', 'تم تخصيص الزيت للخزان بنجاح'));
       setIsAffectDialogOpen(false);
       setSelectedTrit(null);
-      setAffectForm({ reservoirId: '', quantite: '' });
+      setAffectForm({ reservoirId: '', quantite: '', prixHuileKg: '' });
     } else {
       toast.error(t('Capacité du réservoir insuffisante', 'سعة الخزان غير كافية'));
     }
@@ -846,64 +859,112 @@ const Stock = () => {
       </Tabs>
 
       {/* Affectation Dialog */}
-      <Dialog open={isAffectDialogOpen} onOpenChange={() => { setIsAffectDialogOpen(false); setSelectedTrit(null); }}>
+      <Dialog open={isAffectDialogOpen} onOpenChange={() => { setIsAffectDialogOpen(false); setSelectedTrit(null); setAffectForm({ reservoirId: '', quantite: '', prixHuileKg: '' }); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-serif">
               Affecter l'huile au stock | تخصيص الزيت للمخزون
             </DialogTitle>
           </DialogHeader>
-          {selectedTrit && (
-            <form onSubmit={handleAffect} className="space-y-4">
-              <div className="p-4 rounded-lg bg-muted space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">BR | الوصل</span>
-                  <span className="font-medium">{selectedTrit.br.number}</span>
+          {selectedTrit && (() => {
+            const client = clients.find(c => c.id === selectedTrit.br.clientId);
+            const isBawaz = selectedTrit.br.nature === 'bawaz';
+            
+            return (
+              <form onSubmit={handleAffect} className="space-y-4">
+                <div className="p-4 rounded-lg bg-muted space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">BR | الوصل</span>
+                    <span className="font-medium">{selectedTrit.br.number}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Client | الحريف</span>
+                    <span className="font-medium">{client?.name || '-'}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Nature | النوع</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${isBawaz ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>
+                      {isBawaz ? '💸 Bawaz' : '💰 Service'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Poids olives | وزن الزيتون</span>
+                    <span className="font-medium">{selectedTrit.br.poidsNet.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} Kg</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Huile obtenue | الزيت المتحصل عليه</span>
+                    <span className="font-semibold text-primary">{selectedTrit.trit.quantiteHuile.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L</span>
+                  </div>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-muted-foreground">Huile disponible | الزيت المتاح</span>
-                  <span className="font-semibold text-primary">{selectedTrit.trit.quantiteHuile.toLocaleString()} L</span>
+
+                <div className="space-y-2">
+                  <Label>Réservoir * | الخزان *</Label>
+                  <Select
+                    value={affectForm.reservoirId}
+                    onValueChange={(value) => setAffectForm({ ...affectForm, reservoirId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner un réservoir... | اختر خزاناً..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {reservoirs.filter(r => r.status !== 'plein').map((r) => (
+                        <SelectItem key={r.id} value={r.id}>
+                          {r.code} - Dispo | متاح: {(r.capaciteMax - r.quantiteActuelle).toLocaleString()} L
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label>Réservoir * | الخزان *</Label>
-                <Select
-                  value={affectForm.reservoirId}
-                  onValueChange={(value) => setAffectForm({ ...affectForm, reservoirId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un réservoir... | اختر خزاناً..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {reservoirs.filter(r => r.status !== 'plein').map((r) => (
-                      <SelectItem key={r.id} value={r.id}>
-                        {r.code} - Dispo | متاح: {(r.capaciteMax - r.quantiteActuelle).toLocaleString()} L
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+                <div className="space-y-2">
+                  <Label>Quantité à affecter (litres) * | الكمية للتخصيص *</Label>
+                  <Input
+                    type="number"
+                    value={affectForm.quantite}
+                    onChange={(e) => setAffectForm({ ...affectForm, quantite: e.target.value })}
+                    placeholder="0"
+                    step="0.001"
+                  />
+                </div>
 
-              <div className="space-y-2">
-                <Label>Quantité à affecter (litres) * | الكمية للتخصيص *</Label>
-                <Input
-                  type="number"
-                  value={affectForm.quantite}
-                  onChange={(e) => setAffectForm({ ...affectForm, quantite: e.target.value })}
-                  placeholder="0"
-                  step="0.1"
-                />
-              </div>
+                {/* Prix par kg d'huile - ONLY for Bawaz */}
+                {isBawaz && (
+                  <div className="space-y-2 p-3 rounded-lg border-2 border-orange-200 bg-orange-50">
+                    <Label className="text-orange-800 font-semibold">
+                      💸 Prix par Kg d'huile (DT) * | سعر الكيلوغرام من الزيت *
+                    </Label>
+                    <Input
+                      type="number"
+                      value={affectForm.prixHuileKg}
+                      onChange={(e) => setAffectForm({ ...affectForm, prixHuileKg: e.target.value })}
+                      placeholder="0.000"
+                      step="0.001"
+                      className="border-orange-300"
+                    />
+                    {affectForm.prixHuileKg && affectForm.quantite && (
+                      <div className="text-sm text-orange-700 mt-2 p-2 bg-orange-100 rounded">
+                        <div className="flex justify-between">
+                          <span>Montant total estimé:</span>
+                          <span className="font-bold">
+                            {(Number(affectForm.prixHuileKg) * Number(affectForm.quantite)).toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              <div className="flex justify-end gap-3 pt-4">
-                <Button type="button" variant="outline" onClick={() => setIsAffectDialogOpen(false)}>
-                  Annuler | إلغاء
-                </Button>
-                <Button type="submit">Affecter | تخصيص</Button>
-              </div>
-            </form>
-          )}
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setIsAffectDialogOpen(false)}>
+                    Annuler | إلغاء
+                  </Button>
+                  <Button type="submit" className={isBawaz ? 'bg-orange-600 hover:bg-orange-700' : ''}>
+                    Affecter | تخصيص
+                  </Button>
+                </div>
+              </form>
+            );
+          })()}
         </DialogContent>
       </Dialog>
     </MainLayout>

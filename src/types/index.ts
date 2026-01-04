@@ -95,6 +95,7 @@ export interface Trituration {
   date: Date;
   numeroLot?: string;
   quantiteHuile: number;
+  prixHuileKg?: number; // Prix par kg d'huile pour les BR bawaz (défini lors de l'affectation stock)
   observations?: string;
   createdAt: Date;
 }
