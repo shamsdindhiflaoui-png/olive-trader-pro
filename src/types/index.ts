@@ -63,6 +63,7 @@ export interface Trituration {
   brId: string;
   br?: BonReception;
   date: Date;
+  numeroLot?: string;
   quantiteHuile: number;
   observations?: string;
   createdAt: Date;
