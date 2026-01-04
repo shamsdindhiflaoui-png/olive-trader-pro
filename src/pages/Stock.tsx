@@ -918,12 +918,6 @@ const Stock = () => {
                         <span className="text-muted-foreground">{t('Huile produite', 'الزيت المنتج')}: </span>
                         <span className="font-medium">{trit.quantiteHuile.toLocaleString()} L</span>
                       </div>
-                      {client.transactionType === 'bawaza' && (
-                        <div className="text-sm">
-                          <span className="text-muted-foreground">{t('Part huilerie', 'حصة المعصرة')} ({settings.partHuilerieBawaza}%): </span>
-                          <span className="font-semibold text-primary">{targetQuantity.toFixed(1)} L</span>
-                        </div>
-                      )}
                       <div className="text-sm">
                         <span className="text-muted-foreground">{t('Reste à affecter', 'المتبقي للتخصيص')}: </span>
                         <span className="font-semibold text-warning">{remaining.toFixed(1)} L</span>
