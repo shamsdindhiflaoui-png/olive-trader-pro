@@ -19,7 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Receipt, FileText, CheckCircle2, Clock, CreditCard, Wallet, ArrowRightLeft } from 'lucide-react';
 import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
 import { PaymentReceiptPDF } from '@/components/pdf/PaymentReceiptPDF';
-import { TransactionType, PaymentMode, PaymentReceipt } from '@/types';
+import { BRNature, PaymentMode, PaymentReceipt, CashFlowType } from '@/types';
 
 interface BRToPay {
   id: string;
@@ -27,7 +27,7 @@ interface BRToPay {
   brDate: Date;
   clientId: string;
   clientName: string;
-  transactionType: TransactionType;
+  nature: BRNature;
   poidsNet: number;
   quantiteHuile: number;
   isPaid: boolean;
@@ -37,10 +37,14 @@ export default function Paiement() {
   const { t, language } = useLanguageStore();
   const dateLocale = language === 'ar' ? ar : fr;
 
-  const transactionTypeLabels: Record<TransactionType, string> = {
-    facon: t('Façon', 'خدمة'),
-    bawaza: t('Bawaza', 'باوازا'),
-    achat_base: t('Achat Base', 'شراء'),
+  const natureLabels: Record<BRNature, string> = {
+    service: t('Service', 'خدمة'),
+    bawaz: t('Bawaz', 'باواز'),
+  };
+
+  const cashFlowLabels: Record<CashFlowType, string> = {
+    entrant: t('Encaissement', 'تحصيل'),
+    sortant: t('Décaissement', 'صرف'),
   };
 
   const paymentModeLabels: Record<PaymentMode, string> = {
@@ -62,6 +66,8 @@ export default function Paiement() {
   const [selectedReceipt, setSelectedReceipt] = useState<PaymentReceipt | null>(null);
   const [filterClient, setFilterClient] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('unpaid');
+  const [filterNature, setFilterNature] = useState<string>('all');
+  const [activeTab, setActiveTab] = useState<'service' | 'bawaz'>('service');
 
   const [formData, setFormData] = useState({
     prixUnitaire: 0,
@@ -91,7 +97,7 @@ export default function Paiement() {
           brDate: br.date,
           clientId: br.clientId,
           clientName: client.name,
-          transactionType: client.transactionType,
+          nature: br.nature,
           poidsNet: br.poidsNet,
           quantiteHuile: trituration.quantiteHuile,
           isPaid,
@@ -100,28 +106,33 @@ export default function Paiement() {
       .filter(Boolean) as BRToPay[];
   }, [bonsReception, triturations, clients, paymentReceipts]);
 
-  // Filter BRs
+  // Filter BRs by active tab (nature) and other filters
   const filteredBRs = useMemo(() => {
     return brsWithTrituration.filter(br => {
+      // Filter by nature (tab)
+      if (br.nature !== activeTab) return false;
       if (filterClient !== 'all' && br.clientId !== filterClient) return false;
       if (filterStatus === 'unpaid' && br.isPaid) return false;
       if (filterStatus === 'paid' && !br.isPaid) return false;
       return true;
     });
-  }, [brsWithTrituration, filterClient, filterStatus]);
+  }, [brsWithTrituration, filterClient, filterStatus, activeTab]);
 
-  // Stats
+  // Stats per nature
   const stats = useMemo(() => {
-    const unpaidBRs = brsWithTrituration.filter(br => !br.isPaid);
-    const paidBRs = brsWithTrituration.filter(br => br.isPaid);
-    const totalReceipts = paymentReceipts.length;
-    const totalPaid = paymentReceipts.reduce((sum, pr) => sum + pr.totalMontant, 0);
+    const serviceBRs = brsWithTrituration.filter(br => br.nature === 'service');
+    const bawazBRs = brsWithTrituration.filter(br => br.nature === 'bawaz');
+    
+    const serviceReceipts = paymentReceipts.filter(pr => pr.nature === 'service');
+    const bawazReceipts = paymentReceipts.filter(pr => pr.nature === 'bawaz');
     
     return {
-      unpaidCount: unpaidBRs.length,
-      paidCount: paidBRs.length,
-      totalReceipts,
-      totalPaid,
+      serviceUnpaid: serviceBRs.filter(br => !br.isPaid).length,
+      servicePaid: serviceBRs.filter(br => br.isPaid).length,
+      serviceTotalEncaisse: serviceReceipts.reduce((sum, pr) => sum + pr.totalMontant, 0),
+      bawazUnpaid: bawazBRs.filter(br => !br.isPaid).length,
+      bawazPaid: bawazBRs.filter(br => br.isPaid).length,
+      bawazTotalDecaisse: bawazReceipts.reduce((sum, pr) => sum + pr.totalMontant, 0),
     };
   }, [brsWithTrituration, paymentReceipts]);
 
@@ -131,15 +142,18 @@ export default function Paiement() {
     if (selected.length === 0) return null;
     
     const clientId = selected[0].clientId;
+    const nature = selected[0].nature;
     const allSameClient = selected.every(br => br.clientId === clientId);
+    const allSameNature = selected.every(br => br.nature === nature);
     const client = clients.find(c => c.id === clientId);
     
     return {
       count: selected.length,
       allSameClient,
+      allSameNature,
       clientId,
       clientName: client?.name || '',
-      transactionType: client?.transactionType || 'facon',
+      nature,
     };
   }, [selectedBRs, filteredBRs, clients]);
 
@@ -169,9 +183,18 @@ export default function Paiement() {
       });
       return;
     }
+
+    if (!selectedBRsInfo?.allSameNature) {
+      toast({
+        title: t("Erreur", "خطأ"),
+        description: t("Impossible de mélanger des natures différentes (Service/Bawaz) dans un même reçu.", "لا يمكن خلط أنواع مختلفة (خدمة/باواز) في نفس الوصل."),
+        variant: "destructive",
+      });
+      return;
+    }
     
-    // Set default price based on transaction type
-    const defaultPrice = selectedBRsInfo.transactionType === 'facon' 
+    // Set default price based on nature
+    const defaultPrice = selectedBRsInfo.nature === 'service' 
       ? settings.defaultPrixFacon 
       : settings.defaultPrixBase;
     
@@ -238,7 +261,7 @@ export default function Paiement() {
     const selectedItems = filteredBRs.filter(br => selectedBRs.includes(br.id) && !br.isPaid);
     
     const lines = selectedItems.map(br => {
-      const amount = selectedBRsInfo.transactionType === 'facon'
+      const amount = selectedBRsInfo.nature === 'service'
         ? br.poidsNet * formData.prixUnitaire
         : br.quantiteHuile * formData.prixUnitaire;
       return { brNumber: br.brNumber, amount };
@@ -282,10 +305,12 @@ export default function Paiement() {
       header: t('Client', 'الحريف'),
     },
     {
-      key: 'transactionType',
+      key: 'nature',
       header: t('Nature', 'النوع'),
       render: (br: BRToPay) => (
-        <Badge variant="outline">{transactionTypeLabels[br.transactionType]}</Badge>
+        <Badge variant={br.nature === 'service' ? 'default' : 'secondary'} className={br.nature === 'service' ? 'bg-green-600' : 'bg-orange-500'}>
+          {natureLabels[br.nature]}
+        </Badge>
       ),
     },
     {
@@ -389,28 +414,58 @@ export default function Paiement() {
         description={t('Gestion des règlements des bons de réception', 'إدارة تسديد وصولات الاستلام')}
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+      {/* Stats per nature */}
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+        {/* Service stats */}
         <StatCard
-          title={t("BR Non Payés", "وصولات غير مدفوعة")}
-          value={stats.unpaidCount}
-          icon={<Clock className="h-5 w-5" />}
+          title={t("Service - Non Payés", "خدمة - غير مدفوعة")}
+          value={stats.serviceUnpaid}
+          icon={<Clock className="h-5 w-5 text-green-600" />}
         />
         <StatCard
-          title={t("BR Payés", "وصولات مدفوعة")}
-          value={stats.paidCount}
-          icon={<CheckCircle2 className="h-5 w-5" />}
+          title={t("Service - Payés", "خدمة - مدفوعة")}
+          value={stats.servicePaid}
+          icon={<CheckCircle2 className="h-5 w-5 text-green-600" />}
         />
         <StatCard
-          title={t("Reçus Émis", "الوصولات الصادرة")}
-          value={stats.totalReceipts}
-          icon={<Receipt className="h-5 w-5" />}
+          title={t("Total Encaissé", "إجمالي التحصيل")}
+          value={`${stats.serviceTotalEncaisse.toFixed(3)} DT`}
+          icon={<Wallet className="h-5 w-5 text-green-600" />}
+        />
+        {/* Bawaz stats */}
+        <StatCard
+          title={t("Bawaz - Non Payés", "باواز - غير مدفوعة")}
+          value={stats.bawazUnpaid}
+          icon={<Clock className="h-5 w-5 text-orange-500" />}
         />
         <StatCard
-          title={t("Total Réglé", "إجمالي المدفوع")}
-          value={`${stats.totalPaid.toFixed(3)} DT`}
-          icon={<Wallet className="h-5 w-5" />}
+          title={t("Bawaz - Payés", "باواز - مدفوعة")}
+          value={stats.bawazPaid}
+          icon={<CheckCircle2 className="h-5 w-5 text-orange-500" />}
         />
+        <StatCard
+          title={t("Total Décaissé", "إجمالي الصرف")}
+          value={`${stats.bawazTotalDecaisse.toFixed(3)} DT`}
+          icon={<Wallet className="h-5 w-5 text-orange-500" />}
+        />
+      </div>
+
+      {/* Nature Tabs */}
+      <div className="flex gap-2 mb-4">
+        <Button 
+          variant={activeTab === 'service' ? 'default' : 'outline'}
+          onClick={() => { setActiveTab('service'); setSelectedBRs([]); }}
+          className={activeTab === 'service' ? 'bg-green-600 hover:bg-green-700' : ''}
+        >
+          💰 {t('Service (Encaissement)', 'خدمة (تحصيل)')}
+        </Button>
+        <Button 
+          variant={activeTab === 'bawaz' ? 'default' : 'outline'}
+          onClick={() => { setActiveTab('bawaz'); setSelectedBRs([]); }}
+          className={activeTab === 'bawaz' ? 'bg-orange-500 hover:bg-orange-600' : ''}
+        >
+          💸 {t('Bawaz (Décaissement)', 'باواز (صرف)')}
+        </Button>
       </div>
 
       {/* Filters and Actions */}
@@ -495,16 +550,22 @@ export default function Paiement() {
               <div className="p-3 bg-secondary/20 rounded-lg">
                 <p className="font-medium">{selectedBRsInfo.clientName}</p>
                 <p className="text-sm text-muted-foreground">
-                  {selectedBRs.length} {t('BR sélectionné(s)', 'وصل محدد')} - {transactionTypeLabels[selectedBRsInfo.transactionType]}
+                  {selectedBRs.length} {t('BR sélectionné(s)', 'وصل محدد')} - {natureLabels[selectedBRsInfo.nature]}
                 </p>
+                <Badge className={selectedBRsInfo.nature === 'service' ? 'bg-green-600 mt-2' : 'bg-orange-500 mt-2'}>
+                  {selectedBRsInfo.nature === 'service' 
+                    ? t('💰 Flux Entrant (Encaissement)', '💰 تدفق وارد (تحصيل)')
+                    : t('💸 Flux Sortant (Décaissement)', '💸 تدفق صادر (صرف)')
+                  }
+                </Badge>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>
-                    {selectedBRsInfo.transactionType === 'facon' 
+                    {selectedBRsInfo.nature === 'service' 
                       ? t('Prix trituration (DT/kg)', 'سعر العصر (د.ت/كغ)') 
-                      : t('Prix de base (DT/L)', 'السعر الأساسي (د.ت/ل)')}
+                      : t('Prix huile (DT/L)', 'سعر الزيت (د.ت/ل)')}
                   </Label>
                   <Input
                     type="number"
@@ -575,9 +636,14 @@ export default function Paiement() {
                     <span>{t('Total', 'المجموع')}</span>
                     <span>{previewAmounts.total.toFixed(3)} DT</span>
                   </div>
-                  {selectedBRsInfo.transactionType !== 'facon' && (
+                  {selectedBRsInfo.nature === 'bawaz' && (
                     <p className="text-xs text-muted-foreground mt-2">
-                      💡 {t('Ce montant sera crédité au compte du client', 'سيضاف هذا المبلغ لحساب الحريف')}
+                      💸 {t('Ce montant sera payé par l\'huilerie au client', 'سيدفع هذا المبلغ من المعصرة للحريف')}
+                    </p>
+                  )}
+                  {selectedBRsInfo.nature === 'service' && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      💰 {t('Ce montant sera encaissé par l\'huilerie', 'سيتم تحصيل هذا المبلغ من طرف المعصرة')}
                     </p>
                   )}
                 </div>
@@ -641,7 +707,7 @@ export default function Paiement() {
                       <tr key={idx} className="border-t">
                         <td className="p-2 font-mono">{line.brNumber}</td>
                         <td className="p-2 text-right">
-                          {selectedReceipt.transactionType === 'facon' 
+                          {selectedReceipt.nature === 'service' 
                             ? `${line.poidsNet} kg`
                             : `${line.quantiteHuile} L`
                           }
