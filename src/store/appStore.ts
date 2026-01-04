@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Client, BonReception, Trituration, Reservoir, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment, InvoiceSource, ClientOperation, PaymentReceipt, PaymentReceiptLine, PaymentMode, BLPayment, DeletedOperation } from '@/types';
+import { Client, ClientGros, ClientDetailType, ClientGrosType, BonReception, Trituration, Reservoir, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment, InvoiceSource, ClientOperation, PaymentReceipt, PaymentReceiptLine, PaymentMode, BLPayment, DeletedOperation } from '@/types';
 
 interface AppState {
   clients: Client[];
+  clientsGros: ClientGros[];
   clientOperations: ClientOperation[];
   deletedOperations: DeletedOperation[];
   bonsReception: BonReception[];
@@ -17,10 +18,15 @@ interface AppState {
   paymentReceipts: PaymentReceipt[];
   settings: Settings;
   
-  // Client actions
-  addClient: (client: Omit<Client, 'id' | 'code' | 'createdAt'>) => void;
+  // Client Détail actions
+  addClient: (client: Omit<Client, 'id' | 'code' | 'createdAt' | 'transactionType'>) => void;
   updateClient: (id: string, client: Partial<Client>) => void;
   deleteClient: (id: string) => void;
+  
+  // Client Gros actions
+  addClientGros: (client: Omit<ClientGros, 'id' | 'code' | 'createdAt'>) => void;
+  updateClientGros: (id: string, client: Partial<ClientGros>) => void;
+  deleteClientGros: (id: string) => void;
   
   // Client operations (Bawaza)
   addClientOperation: (operation: Omit<ClientOperation, 'id' | 'createdAt' | 'receiptNumber'>) => ClientOperation;
@@ -69,6 +75,7 @@ export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       clients: [],
+      clientsGros: [],
       clientOperations: [],
       deletedOperations: [],
       bonsReception: [],
@@ -87,22 +94,54 @@ export const useAppStore = create<AppState>()(
         partHuilerieBawaza: 20,
       },
       
-      // Client actions
-      addClient: (clientData) => set((state) => ({
-        clients: [...state.clients, {
-          ...clientData,
-          id: generateId(),
-          code: generateCode('CLT', state.clients.length),
-          createdAt: new Date(),
-        }]
-      })),
+      // Client Détail actions
+      addClient: (clientData) => set((state) => {
+        // Map clientType to transactionType for legacy support
+        const transactionType = clientData.clientType === 'agriculteur' ? 'facon' : 'bawaza';
+        return {
+          clients: [...state.clients, {
+            ...clientData,
+            transactionType,
+            id: generateId(),
+            code: generateCode('CLT', state.clients.length),
+            createdAt: new Date(),
+          }]
+        };
+      }),
       
       updateClient: (id, clientData) => set((state) => ({
-        clients: state.clients.map(c => c.id === id ? { ...c, ...clientData } : c)
+        clients: state.clients.map(c => {
+          if (c.id === id) {
+            // Update transactionType if clientType changed
+            const transactionType = clientData.clientType 
+              ? (clientData.clientType === 'agriculteur' ? 'facon' : 'bawaza')
+              : c.transactionType;
+            return { ...c, ...clientData, transactionType };
+          }
+          return c;
+        })
       })),
       
       deleteClient: (id) => set((state) => ({
         clients: state.clients.filter(c => c.id !== id)
+      })),
+      
+      // Client Gros actions
+      addClientGros: (clientData) => set((state) => ({
+        clientsGros: [...state.clientsGros, {
+          ...clientData,
+          id: generateId(),
+          code: generateCode('CLG', state.clientsGros.length),
+          createdAt: new Date(),
+        }]
+      })),
+      
+      updateClientGros: (id, clientData) => set((state) => ({
+        clientsGros: state.clientsGros.map(c => c.id === id ? { ...c, ...clientData } : c)
+      })),
+      
+      deleteClientGros: (id) => set((state) => ({
+        clientsGros: state.clientsGros.filter(c => c.id !== id)
       })),
       
       // Client operations (Bawaza - capital FDR, avances)
@@ -628,6 +667,7 @@ export const useAppStore = create<AppState>()(
       // Clear all data
       clearAllData: () => set(() => ({
         clients: [],
+        clientsGros: [],
         clientOperations: [],
         deletedOperations: [],
         bonsReception: [],

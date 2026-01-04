@@ -53,6 +53,8 @@ const operationTypeLabels: Record<ClientOperationType, string> = {
 };
 
 const clientTypeLabels: Record<string, string> = {
+  agriculteur: 'Agriculteur | فلاح',
+  bawaz: 'Bawaz | باواز',
   facon: 'Façon (Service)',
   bawaza: 'Bawaza',
   achat_base: 'Achat à la base',
@@ -248,7 +250,7 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Type</p>
-              <p className="font-medium text-primary">{clientTypeLabels[client.transactionType] || client.transactionType}</p>
+              <p className="font-medium text-primary">{clientTypeLabels[client.clientType] || clientTypeLabels[client.transactionType] || client.clientType}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Téléphone</p>
