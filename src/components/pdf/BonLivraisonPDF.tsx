@@ -227,7 +227,7 @@ export const BonLivraisonPDF = ({ bl, client, settings }: BonLivraisonPDFProps) 
       <View style={styles.table}>
         <View style={styles.tableHeader}>
           <Text style={styles.colDescription}>Désignation</Text>
-          <Text style={styles.colQty}>Quantité (L)</Text>
+          <Text style={styles.colQty}>Quantité (kg)</Text>
           <Text style={styles.colPrice}>Prix Unit. (DT)</Text>
           <Text style={styles.colTotal}>Total (DT)</Text>
         </View>

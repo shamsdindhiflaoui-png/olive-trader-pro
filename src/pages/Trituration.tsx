@@ -278,8 +278,8 @@ const Trituration = () => {
     },
     {
       key: 'quantiteHuile',
-      header: t('Huile (L)', 'الزيت'),
-      render: (trit: TriturationT) => `${trit.quantiteHuile.toLocaleString()} L`,
+      header: t('Huile (kg)', 'الزيت'),
+      render: (trit: TriturationT) => `${trit.quantiteHuile.toLocaleString()} kg`,
       className: 'text-right font-semibold text-primary',
     },
     {
@@ -477,7 +477,7 @@ const Trituration = () => {
             />
             <StatCard
               title={t('Huile obtenue', 'الزيت المنتج')}
-              value={`${stats.totalHuileLitres.toLocaleString()} L`}
+              value={`${stats.totalHuileLitres.toLocaleString()} kg`}
               icon={Droplets}
               subtitle={dateDebut || dateFin ? t('Période filtrée', 'فترة محددة') : t('Total', 'الإجمالي')}
             />
@@ -561,7 +561,7 @@ const Trituration = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="quantiteHuile">{t("Quantité d'huile obtenue (litres) *", "كمية الزيت المنتج *")}</Label>
+                <Label htmlFor="quantiteHuile">{t("Quantité d'huile obtenue (kg) *", "كمية الزيت المنتج (كغ) *")}</Label>
                 <Input
                   id="quantiteHuile"
                   type="number"

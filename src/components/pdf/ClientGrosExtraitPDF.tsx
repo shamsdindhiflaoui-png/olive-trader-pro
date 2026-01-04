@@ -269,7 +269,7 @@ export function ClientGrosExtraitPDF({ client, bonsLivraison, totals, companyNam
         {/* Stats */}
         <View style={styles.statsContainer}>
           <View style={[styles.statBox, styles.statBoxBlue]}>
-            <Text style={[styles.statValue, { color: '#1d4ed8' }]}>{formatNumber(totals.totalQuantite)} L</Text>
+            <Text style={[styles.statValue, { color: '#1d4ed8' }]}>{formatNumber(totals.totalQuantite)} kg</Text>
             <Text style={styles.statLabel}>Quantité totale | الكمية الإجمالية</Text>
           </View>
           <View style={[styles.statBox, styles.statBoxGreen]}>
@@ -287,7 +287,7 @@ export function ClientGrosExtraitPDF({ client, bonsLivraison, totals, companyNam
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderCell, styles.colBL]}>N° BL</Text>
             <Text style={[styles.tableHeaderCell, styles.colDate]}>Date</Text>
-            <Text style={[styles.tableHeaderCell, styles.colQty]}>Qté (L)</Text>
+            <Text style={[styles.tableHeaderCell, styles.colQty]}>Qté (kg)</Text>
             <Text style={[styles.tableHeaderCell, styles.colPrix]}>Prix U.</Text>
             <Text style={[styles.tableHeaderCell, styles.colHT]}>HT (DT)</Text>
             <Text style={[styles.tableHeaderCell, styles.colTVA]}>TVA</Text>

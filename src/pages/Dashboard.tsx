@@ -92,13 +92,13 @@ const Dashboard = () => {
         />
         <StatCard
           title={t('Huile Produite', 'الزيت المنتج')}
-          value={`${formatNumber(totalHuile)} L`}
+          value={`${formatNumber(totalHuile)} kg`}
           subtitle={t('Total trituré', 'إجمالي المعصور')}
           icon={Droplets}
         />
         <StatCard
           title={t('Stock Disponible', 'المخزون المتاح')}
-          value={`${formatNumber(stockTotal)} L`}
+          value={`${formatNumber(stockTotal)} kg`}
           subtitle={t(`${reservoirs.length} réservoirs`, `${reservoirs.length} خزانات`)}
           icon={Database}
         />
@@ -177,8 +177,8 @@ const Dashboard = () => {
                     </div>
                   </div>
                   <div className="flex justify-between text-sm text-muted-foreground">
-                    <span>{reservoir.quantiteActuelle.toLocaleString()} L</span>
-                    <span>{reservoir.capaciteMax.toLocaleString()} L max</span>
+                    <span>{reservoir.quantiteActuelle.toLocaleString()} kg</span>
+                    <span>{reservoir.capaciteMax.toLocaleString()} kg max</span>
                   </div>
                 </div>
               );

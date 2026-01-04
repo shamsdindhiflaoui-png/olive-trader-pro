@@ -235,11 +235,11 @@ export const ReservoirCostPDF = ({
           <View style={styles.infoGrid}>
             <View style={styles.infoBox}>
               <Text style={styles.infoLabel}>Capacité Max | السعة القصوى</Text>
-              <Text style={styles.infoValue}>{formatNumber(reservoir.capaciteMax)} L</Text>
+              <Text style={styles.infoValue}>{formatNumber(reservoir.capaciteMax)} kg</Text>
             </View>
             <View style={styles.infoBox}>
               <Text style={styles.infoLabel}>Quantité Actuelle | الكمية الحالية</Text>
-              <Text style={styles.infoValue}>{formatNumber(reservoir.quantiteActuelle)} L</Text>
+              <Text style={styles.infoValue}>{formatNumber(reservoir.quantiteActuelle)} kg</Text>
             </View>
             <View style={styles.infoBox}>
               <Text style={styles.infoLabel}>Taux Remplissage | نسبة الامتلاء</Text>
@@ -254,7 +254,7 @@ export const ReservoirCostPDF = ({
           <View style={styles.costGrid}>
             <View style={styles.costBox}>
               <Text style={styles.costLabel}>Quantité achetée | الكمية المشتراة</Text>
-              <Text style={styles.costValue}>{formatNumber(totalQuantiteAchetee)} L</Text>
+              <Text style={styles.costValue}>{formatNumber(totalQuantiteAchetee)} kg</Text>
             </View>
             <View style={styles.costBox}>
               <Text style={styles.costLabel}>Montant total | المبلغ الإجمالي</Text>
@@ -316,7 +316,7 @@ export const ReservoirCostPDF = ({
                     <Text style={styles.cellText}>{entry.clientName}</Text>
                   </View>
                   <View style={styles.colQte}>
-                    <Text style={styles.cellText}>{formatNumber(entry.quantite)} L</Text>
+                    <Text style={styles.cellText}>{formatNumber(entry.quantite)} kg</Text>
                   </View>
                   <View style={styles.colPrix}>
                     <Text style={styles.cellText}>{formatNumber(entry.prixUnitaire)} DT</Text>
@@ -339,7 +339,7 @@ export const ReservoirCostPDF = ({
                   <Text style={styles.footerText}>المجموع</Text>
                 </View>
                 <View style={styles.colQte}>
-                  <Text style={styles.footerText}>{formatNumber(totalQuantiteAchetee)} L</Text>
+                  <Text style={styles.footerText}>{formatNumber(totalQuantiteAchetee)} kg</Text>
                 </View>
                 <View style={styles.colPrix}>
                   <Text style={styles.footerText}>{prixMoyen > 0 ? `${formatNumber(prixMoyen)} DT` : '-'}</Text>

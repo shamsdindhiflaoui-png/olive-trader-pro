@@ -132,7 +132,7 @@ export function ClientGrosFicheDialog({ client, open, onOpenChange }: ClientGros
               <p className="text-sm text-muted-foreground">{t('Bons de livraison', 'وصولات التسليم')}</p>
             </div>
             <div className="p-4 rounded-lg bg-secondary/30 text-center">
-              <p className="text-2xl font-bold">{formatNumber(totals.totalQuantite)} L</p>
+              <p className="text-2xl font-bold">{formatNumber(totals.totalQuantite)} kg</p>
               <p className="text-sm text-muted-foreground">{t('Quantité totale', 'الكمية الإجمالية')}</p>
             </div>
             <div className="p-4 rounded-lg bg-green-100 dark:bg-green-900/20 text-center">
@@ -152,7 +152,7 @@ export function ClientGrosFicheDialog({ client, open, onOpenChange }: ClientGros
                 <TableRow className="bg-muted/50">
                   <TableHead className="w-[100px]">{t('N° BL', 'رقم الوصل')}</TableHead>
                   <TableHead className="w-[100px]">{t('Date', 'التاريخ')}</TableHead>
-                  <TableHead className="text-right">{t('Quantité (L)', 'الكمية')}</TableHead>
+                  <TableHead className="text-right">{t('Quantité (kg)', 'الكمية')}</TableHead>
                   <TableHead className="text-right">{t('Prix U.', 'السعر')}</TableHead>
                   <TableHead className="text-right">{t('Montant HT', 'خام')}</TableHead>
                   <TableHead className="text-right">{t('TVA', 'ض.ق.م')}</TableHead>
@@ -211,7 +211,7 @@ export function ClientGrosFicheDialog({ client, open, onOpenChange }: ClientGros
                       {t('TOTAUX', 'المجموع')}
                     </TableCell>
                     <TableCell className="text-right text-lg">
-                      {formatNumber(totals.totalQuantite)} L
+                      {formatNumber(totals.totalQuantite)} kg
                     </TableCell>
                     <TableCell></TableCell>
                     <TableCell className="text-right">
