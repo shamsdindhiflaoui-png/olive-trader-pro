@@ -27,6 +27,7 @@ import { Client, ClientGros, ClientDetailType, ClientGrosType } from '@/types';
 import { Plus, Pencil, Trash2, FileText, Users, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ClientFicheDialog } from '@/components/clients/ClientFicheDialog';
+import { ClientGrosFicheDialog } from '@/components/clients/ClientGrosFicheDialog';
 import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
 import { AllClientsExtraitPDF } from '@/components/pdf/AllClientsExtraitPDF';
 
@@ -56,6 +57,7 @@ const Clients = () => {
   // Client Gros state
   const [isGrosDialogOpen, setIsGrosDialogOpen] = useState(false);
   const [editingClientGros, setEditingClientGros] = useState<ClientGros | null>(null);
+  const [ficheClientGros, setFicheClientGros] = useState<ClientGros | null>(null);
   const [formDataGros, setFormDataGros] = useState({
     raisonSociale: '',
     clientType: 'grossiste' as ClientGrosType,
@@ -317,6 +319,14 @@ const Clients = () => {
       header: t('Actions', 'إجراءات'),
       render: (client: ClientGros) => (
         <div className="flex items-center gap-2">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={(e) => { e.stopPropagation(); setFicheClientGros(client); }}
+            title={t('Voir la fiche', 'عرض البطاقة')}
+          >
+            <FileText className="h-4 w-4" />
+          </Button>
           <Button 
             variant="ghost" 
             size="sm" 
@@ -606,6 +616,14 @@ const Clients = () => {
           client={ficheClient}
           open={!!ficheClient}
           onOpenChange={(open) => !open && setFicheClient(null)}
+        />
+      )}
+
+      {ficheClientGros && (
+        <ClientGrosFicheDialog
+          client={ficheClientGros}
+          open={!!ficheClientGros}
+          onOpenChange={(open) => !open && setFicheClientGros(null)}
         />
       )}
     </MainLayout>
