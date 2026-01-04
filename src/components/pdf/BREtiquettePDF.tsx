@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -35,6 +35,23 @@ const styles = StyleSheet.create({
     fontSize: 9,
     textAlign: 'right',
   },
+  mainContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  infoSection: {
+    flex: 1,
+  },
+  qrSection: {
+    width: 60,
+    height: 60,
+    marginLeft: 10,
+  },
+  qrImage: {
+    width: 60,
+    height: 60,
+  },
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -51,25 +68,25 @@ const styles = StyleSheet.create({
   },
   weightSection: {
     backgroundColor: '#f0f0f0',
-    padding: 10,
-    marginTop: 8,
+    padding: 8,
+    marginTop: 6,
     borderRadius: 4,
     alignItems: 'center',
   },
   weightLabel: {
-    fontSize: 10,
+    fontSize: 9,
     color: '#666',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   weightValue: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   natureBadge: {
-    padding: '4 8',
+    padding: '3 6',
     borderRadius: 4,
-    fontSize: 8,
-    marginTop: 6,
+    fontSize: 7,
+    marginTop: 4,
   },
   serviceBadge: {
     backgroundColor: '#dcfce7',
@@ -87,15 +104,16 @@ interface BREtiquettePDFProps {
   poidsNet: number;
   date: Date;
   nature: 'service' | 'bawaz';
+  qrCodeDataUrl?: string;
 }
 
-export function BREtiquettePDF({ brNumber, clientName, poidsNet, date, nature }: BREtiquettePDFProps) {
+export function BREtiquettePDF({ brNumber, clientName, poidsNet, date, nature, qrCodeDataUrl }: BREtiquettePDFProps) {
   const formattedDate = format(date, 'dd/MM/yyyy', { locale: fr });
   const formattedTime = format(date, 'HH:mm:ss');
 
   return (
     <Document>
-      <Page size={[226, 150]} style={styles.page}>
+      <Page size={[226, 170]} style={styles.page}>
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.brNumber}>{brNumber}</Text>
@@ -105,17 +123,27 @@ export function BREtiquettePDF({ brNumber, clientName, poidsNet, date, nature }:
             </View>
           </View>
 
-          <View style={styles.row}>
-            <Text style={styles.label}>Client / الحريف:</Text>
-            <Text style={styles.value}>{clientName}</Text>
-          </View>
+          <View style={styles.mainContent}>
+            <View style={styles.infoSection}>
+              <View style={styles.row}>
+                <Text style={styles.label}>Client:</Text>
+                <Text style={styles.value}>{clientName}</Text>
+              </View>
 
-          <View style={styles.weightSection}>
-            <Text style={styles.weightLabel}>Poids Net / الوزن الصافي</Text>
-            <Text style={styles.weightValue}>{poidsNet.toLocaleString()} Kg</Text>
-            <View style={[styles.natureBadge, nature === 'service' ? styles.serviceBadge : styles.bawazBadge]}>
-              <Text>{nature === 'service' ? 'Service / خدمة' : 'Bawaz / باواز'}</Text>
+              <View style={styles.weightSection}>
+                <Text style={styles.weightLabel}>Poids Net</Text>
+                <Text style={styles.weightValue}>{poidsNet.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} Kg</Text>
+                <View style={[styles.natureBadge, nature === 'service' ? styles.serviceBadge : styles.bawazBadge]}>
+                  <Text>{nature === 'service' ? 'Service' : 'Bawaz'}</Text>
+                </View>
+              </View>
             </View>
+
+            {qrCodeDataUrl && (
+              <View style={styles.qrSection}>
+                <Image style={styles.qrImage} src={qrCodeDataUrl} />
+              </View>
+            )}
           </View>
         </View>
       </Page>
