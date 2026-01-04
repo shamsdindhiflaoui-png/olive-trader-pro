@@ -155,10 +155,9 @@ interface BRPDFProps {
   settings: Settings;
 }
 
-const transactionTypeLabels = {
-  facon: 'Façon (Service)',
-  bawaza: 'Bawaza',
-  achat_base: 'Achat à la base',
+const natureLabels = {
+  service: { fr: 'Service (Trituration)', ar: 'خدمة (عصر)' },
+  bawaz: { fr: 'Bawaz', ar: 'باواز' },
 };
 
 export function BonReceptionPDF({ br, client, settings }: BRPDFProps) {
@@ -196,8 +195,8 @@ export function BonReceptionPDF({ br, client, settings }: BRPDFProps) {
             <Text style={styles.value}>{client.name}</Text>
           </View>
           <View style={styles.row}>
-            <Text style={styles.label}>Type de transaction:</Text>
-            <Text style={styles.value}>{transactionTypeLabels[client.transactionType]}</Text>
+            <Text style={styles.label}>Nature de transaction:</Text>
+            <Text style={styles.value}>{natureLabels[br.nature].fr} / {natureLabels[br.nature].ar}</Text>
           </View>
           {client.phone && (
             <View style={styles.row}>

@@ -36,6 +36,7 @@ interface AppState {
   
   // BR actions
   addBR: (br: Omit<BonReception, 'id' | 'number' | 'poidsNet' | 'status' | 'createdAt'>) => void;
+  getBRCountByNature: (nature: 'service' | 'bawaz') => number;
   updateBR: (id: string, br: Partial<BonReception>) => void;
   closeBR: (id: string) => void;
   
@@ -205,16 +206,28 @@ export const useAppStore = create<AppState>()(
       },
       
       // BR actions
-      addBR: (brData) => set((state) => ({
-        bonsReception: [...state.bonsReception, {
-          ...brData,
-          id: generateId(),
-          number: generateCode('BR', state.bonsReception.length),
-          poidsNet: brData.poidsPlein - brData.poidsVide,
-          status: 'open',
-          createdAt: new Date(),
-        }]
-      })),
+      getBRCountByNature: (nature) => {
+        const state = get();
+        return state.bonsReception.filter(br => br.nature === nature).length;
+      },
+      
+      addBR: (brData) => set((state) => {
+        // Generate number based on nature: S for Service, B for Bawaz
+        const prefix = brData.nature === 'service' ? 'S' : 'B';
+        const count = state.bonsReception.filter(br => br.nature === brData.nature).length;
+        const number = `${prefix}${String(count + 1).padStart(4, '0')}`;
+        
+        return {
+          bonsReception: [...state.bonsReception, {
+            ...brData,
+            id: generateId(),
+            number,
+            poidsNet: brData.poidsPlein - brData.poidsVide,
+            status: 'open',
+            createdAt: new Date(),
+          }]
+        };
+      }),
       
       updateBR: (id, brData) => set((state) => ({
         bonsReception: state.bonsReception.map(br => 
@@ -600,11 +613,20 @@ export const useAppStore = create<AppState>()(
         const client = state.clients.find(c => c.id === data.clientId);
         if (!client) return null;
         
-        // Verify all BRs belong to the same client and are closed/unpaid
+        // Verify all BRs belong to the same client, same nature, and are closed/unpaid
         const brList: PaymentReceiptLine[] = [];
+        let brNature: 'service' | 'bawaz' | null = null;
+        
         for (const brId of data.brIds) {
           const br = state.bonsReception.find(b => b.id === brId);
           if (!br || br.status !== 'closed' || br.clientId !== data.clientId) return null;
+          
+          // Check nature consistency
+          if (brNature === null) {
+            brNature = br.nature;
+          } else if (br.nature !== brNature) {
+            return null; // Cannot mix different natures
+          }
           
           // Check if already paid
           const existingReceipt = state.paymentReceipts.find(pr => 
@@ -616,11 +638,11 @@ export const useAppStore = create<AppState>()(
           if (!trituration) return null;
           
           let montant: number;
-          if (client.transactionType === 'facon') {
-            // Façon: based on weight (kg)
+          if (br.nature === 'service') {
+            // Service: based on weight (kg) - client pays mill
             montant = br.poidsNet * data.prixUnitaire;
           } else {
-            // Bawaza & Achat Base: based on oil quantity
+            // Bawaz: based on oil quantity - mill pays client
             montant = trituration.quantiteHuile * data.prixUnitaire;
           }
           
@@ -635,16 +657,25 @@ export const useAppStore = create<AppState>()(
           });
         }
         
-        if (brList.length === 0) return null;
+        if (brList.length === 0 || !brNature) return null;
         
         const totalMontant = brList.reduce((sum, line) => sum + line.montant, 0);
         
+        // Determine cash flow type based on BR nature
+        const cashFlowType = brNature === 'service' ? 'entrant' : 'sortant';
+        
+        // Generate receipt number with prefix based on cash flow
+        const prefix = cashFlowType === 'entrant' ? 'REC-E' : 'REC-S';
+        const count = state.paymentReceipts.filter(r => r.cashFlowType === cashFlowType).length;
+        const number = `${prefix}${String(count + 1).padStart(4, '0')}`;
+        
         const receipt: PaymentReceipt = {
           id: generateId(),
-          number: generateCode('REC', state.paymentReceipts.length),
+          number,
           date: data.date,
           clientId: data.clientId,
-          transactionType: client.transactionType,
+          nature: brNature,
+          cashFlowType,
           lines: brList,
           totalMontant,
           modePayment: data.modePayment,

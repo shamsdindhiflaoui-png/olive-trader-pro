@@ -69,9 +69,13 @@ export interface ClientGros {
 
 export type BRStatus = 'open' | 'closed';
 
+// Nature du BR: Service (S) = client paie l'huilerie, Bawaz (B) = huilerie paie le client
+export type BRNature = 'service' | 'bawaz';
+
 export interface BonReception {
   id: string;
   number: string;
+  nature: BRNature;
   date: Date;
   clientId: string;
   client?: Client;
@@ -230,13 +234,17 @@ export interface PaymentReceiptLine {
   montant: number;
 }
 
+// Type de flux de caisse
+export type CashFlowType = 'entrant' | 'sortant';
+
 export interface PaymentReceipt {
   id: string;
   number: string;
   date: Date;
   clientId: string;
   client?: Client;
-  transactionType: TransactionType;
+  nature: BRNature;
+  cashFlowType: CashFlowType;
   lines: PaymentReceiptLine[];
   totalMontant: number;
   modePayment: PaymentMode;

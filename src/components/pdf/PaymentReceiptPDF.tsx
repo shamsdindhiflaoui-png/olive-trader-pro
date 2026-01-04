@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer';
-import { PaymentReceipt, Client, Settings, PaymentMode, TransactionType } from '@/types';
+import { PaymentReceipt, Client, Settings, PaymentMode, BRNature, CashFlowType } from '@/types';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
 
@@ -242,6 +242,11 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     textAlign: 'center',
   },
+  cashFlowBadge: {
+    padding: 5,
+    borderRadius: 4,
+    marginTop: 5,
+  },
 });
 
 const paymentModeLabels: Record<PaymentMode, string> = {
@@ -250,10 +255,14 @@ const paymentModeLabels: Record<PaymentMode, string> = {
   compensation: 'Compensation',
 };
 
-const transactionTypeLabels: Record<TransactionType, string> = {
-  facon: 'Façon (Service)',
-  bawaza: 'Bawaza',
-  achat_base: 'Achat à la base',
+const natureLabels: Record<BRNature, string> = {
+  service: 'Service (Trituration)',
+  bawaz: 'Bawaz',
+};
+
+const cashFlowLabels: Record<CashFlowType, string> = {
+  entrant: 'Flux Entrant (Encaissement)',
+  sortant: 'Flux Sortant (Décaissement)',
 };
 
 interface PaymentReceiptPDFProps {
@@ -294,8 +303,8 @@ export const PaymentReceiptPDF = ({ receipt, client, settings }: PaymentReceiptP
       {/* Transaction Info */}
       <View style={styles.infoRow}>
         <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>Type d'opération</Text>
-          <Text style={styles.infoValue}>{transactionTypeLabels[receipt.transactionType]}</Text>
+          <Text style={styles.infoLabel}>Nature de l'opération</Text>
+          <Text style={styles.infoValue}>{natureLabels[receipt.nature]}</Text>
         </View>
         <View style={styles.infoItem}>
           <Text style={styles.infoLabel}>Mode de règlement</Text>
@@ -307,13 +316,31 @@ export const PaymentReceiptPDF = ({ receipt, client, settings }: PaymentReceiptP
         </View>
       </View>
 
+      {/* Cash Flow Type Indicator */}
+      <View style={[styles.cashFlowBadge, { 
+        backgroundColor: receipt.cashFlowType === 'entrant' ? '#dcfce7' : '#fee2e2',
+        marginBottom: 15
+      }]}>
+        <Text style={{ 
+          fontSize: 11, 
+          fontWeight: 'bold', 
+          textAlign: 'center',
+          color: receipt.cashFlowType === 'entrant' ? '#166534' : '#991b1b'
+        }}>
+          {receipt.cashFlowType === 'entrant' 
+            ? '💰 ENCAISSEMENT - Client paie l\'huilerie'
+            : '💸 DÉCAISSEMENT - Huilerie paie le client'
+          }
+        </Text>
+      </View>
+
       {/* Table */}
       <View style={styles.table}>
         <View style={styles.tableHeader}>
           <Text style={styles.colBR}>N° BR</Text>
           <Text style={styles.colDate}>Date BR</Text>
           <Text style={styles.colQty}>
-            {receipt.transactionType === 'facon' ? 'Poids (kg)' : 'Huile (L)'}
+            {receipt.nature === 'service' ? 'Poids (kg)' : 'Huile (L)'}
           </Text>
           <Text style={styles.colPrice}>P.U. (DT)</Text>
           <Text style={styles.colTotal}>Montant (DT)</Text>
@@ -325,7 +352,7 @@ export const PaymentReceiptPDF = ({ receipt, client, settings }: PaymentReceiptP
               {format(new Date(line.brDate), 'dd/MM/yyyy', { locale: fr })}
             </Text>
             <Text style={styles.colQty}>
-              {receipt.transactionType === 'facon' 
+              {receipt.nature === 'service' 
                 ? line.poidsNet.toLocaleString()
                 : line.quantiteHuile.toLocaleString()
               }
@@ -339,7 +366,9 @@ export const PaymentReceiptPDF = ({ receipt, client, settings }: PaymentReceiptP
       {/* Total */}
       <View style={styles.totalsSection}>
         <View style={styles.grandTotal}>
-          <Text style={styles.grandTotalLabel}>TOTAL RÉGLÉ:</Text>
+          <Text style={styles.grandTotalLabel}>
+            {receipt.cashFlowType === 'entrant' ? 'TOTAL ENCAISSÉ:' : 'TOTAL DÉCAISSÉ:'}
+          </Text>
           <Text style={styles.grandTotalValue}>{receipt.totalMontant.toFixed(3)} DT</Text>
         </View>
       </View>
@@ -357,14 +386,12 @@ export const PaymentReceiptPDF = ({ receipt, client, settings }: PaymentReceiptP
             {format(new Date(receipt.date), 'dd/MM/yyyy', { locale: fr })}
           </Text>
         </View>
-        {receipt.transactionType !== 'facon' && (
-          <View style={styles.paymentRow}>
-            <Text>Note:</Text>
-            <Text style={{ fontStyle: 'italic' }}>
-              Montant crédité sur le compte du client
-            </Text>
-          </View>
-        )}
+        <View style={styles.paymentRow}>
+          <Text>Flux de caisse:</Text>
+          <Text style={{ fontWeight: 'bold' }}>
+            {cashFlowLabels[receipt.cashFlowType]}
+          </Text>
+        </View>
       </View>
 
       {/* Observations */}
