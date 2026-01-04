@@ -11,20 +11,23 @@ import {
   Settings,
   Droplets
 } from 'lucide-react';
+import { LanguageSelector } from '@/components/LanguageSelector';
+import { useLanguageStore } from '@/store/languageStore';
 
 const navItems = [
-  { path: '/', label: 'Tableau de bord', labelAr: 'لوحة القيادة', icon: LayoutDashboard },
-  { path: '/clients', label: 'Clients', labelAr: 'الحرفاء', icon: Users },
-  { path: '/bons-reception', label: 'Bons de Réception', labelAr: 'وصولات الاستلام', icon: FileText },
-  { path: '/trituration', label: 'Trituration', labelAr: 'العصر', icon: Factory },
-  { path: '/stock', label: 'Stock', labelAr: 'المخزون', icon: Database },
-  { path: '/vente', label: 'Vente', labelAr: 'البيع', icon: ShoppingCart },
-  { path: '/paiement', label: 'Paiement', labelAr: 'الدفع', icon: CreditCard },
-  { path: '/parametres', label: 'Paramètres', labelAr: 'الإعدادات', icon: Settings },
+  { path: '/', labelFr: 'Tableau de bord', labelAr: 'لوحة القيادة', icon: LayoutDashboard },
+  { path: '/clients', labelFr: 'Clients', labelAr: 'الحرفاء', icon: Users },
+  { path: '/bons-reception', labelFr: 'Bons de Réception', labelAr: 'وصولات الاستلام', icon: FileText },
+  { path: '/trituration', labelFr: 'Trituration', labelAr: 'العصر', icon: Factory },
+  { path: '/stock', labelFr: 'Stock', labelAr: 'المخزون', icon: Database },
+  { path: '/vente', labelFr: 'Vente', labelAr: 'البيع', icon: ShoppingCart },
+  { path: '/paiement', labelFr: 'Paiement', labelAr: 'الدفع', icon: CreditCard },
+  { path: '/parametres', labelFr: 'Paramètres', labelAr: 'الإعدادات', icon: Settings },
 ];
 
 export function Sidebar() {
   const location = useLocation();
+  const { language, t } = useLanguageStore();
 
   return (
     <aside className="fixed left-0 top-0 z-40 h-screen w-64 bg-sidebar text-sidebar-foreground">
@@ -35,9 +38,14 @@ export function Sidebar() {
             <Droplets className="h-6 w-6 text-sidebar-primary-foreground" />
           </div>
           <div>
-            <h1 className="font-serif text-lg font-semibold">Huilerie <span className="text-sm font-normal opacity-80">معصرة</span></h1>
-            <p className="text-xs text-sidebar-foreground/70">Gestion des olives | إدارة الزيتون</p>
+            <h1 className="font-serif text-lg font-semibold">{t('Huilerie', 'معصرة')}</h1>
+            <p className="text-xs text-sidebar-foreground/70">{t('Gestion des olives', 'إدارة الزيتون')}</p>
           </div>
+        </div>
+
+        {/* Language Selector */}
+        <div className="px-3 py-2 border-b border-sidebar-border">
+          <LanguageSelector />
         </div>
 
         {/* Navigation */}
@@ -45,6 +53,7 @@ export function Sidebar() {
           {navItems.map((item) => {
             const isActive = location.pathname === item.path;
             const Icon = item.icon;
+            const label = language === 'fr' ? item.labelFr : item.labelAr;
             
             return (
               <Link
@@ -56,12 +65,10 @@ export function Sidebar() {
                     ? "bg-sidebar-accent text-sidebar-accent-foreground" 
                     : "text-sidebar-foreground/80 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground"
                 )}
+                dir={language === 'ar' ? 'rtl' : 'ltr'}
               >
                 <Icon className="h-5 w-5" />
-                <div className="flex flex-col">
-                  <span>{item.label}</span>
-                  <span className="text-xs opacity-70" dir="rtl">{item.labelAr}</span>
-                </div>
+                <span>{label}</span>
               </Link>
             );
           })}

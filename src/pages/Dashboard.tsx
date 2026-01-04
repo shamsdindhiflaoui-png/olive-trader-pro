@@ -4,6 +4,7 @@ import { StatCard } from '@/components/ui/stat-card';
 import { DataTable } from '@/components/ui/data-table';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { useAppStore } from '@/store/appStore';
+import { useLanguageStore } from '@/store/languageStore';
 import { formatNumber } from '@/lib/utils';
 import { 
   Users, 
@@ -14,10 +15,13 @@ import {
   Clock
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { fr, ar } from 'date-fns/locale';
 
 const Dashboard = () => {
   const { clients, bonsReception, triturations, reservoirs, invoices } = useAppStore();
+  const { t, language } = useLanguageStore();
+
+  const dateLocale = language === 'ar' ? ar : fr;
 
   const openBRs = bonsReception.filter(br => br.status === 'open');
   const closedBRs = bonsReception.filter(br => br.status === 'closed');
@@ -32,19 +36,19 @@ const Dashboard = () => {
   const brColumns = [
     { 
       key: 'number', 
-      header: 'N° BR | رقم الوصل',
+      header: t('N° BR', 'رقم الوصل'),
       render: (br: typeof bonsReception[0]) => (
         <span className="font-medium text-primary">{br.number}</span>
       )
     },
     { 
       key: 'date', 
-      header: 'Date | التاريخ',
-      render: (br: typeof bonsReception[0]) => format(new Date(br.date), 'dd MMM yyyy', { locale: fr })
+      header: t('Date', 'التاريخ'),
+      render: (br: typeof bonsReception[0]) => format(new Date(br.date), 'dd MMM yyyy', { locale: dateLocale })
     },
     { 
       key: 'client', 
-      header: 'Client | الحريف',
+      header: t('Client', 'الحريف'),
       render: (br: typeof bonsReception[0]) => {
         const client = clients.find(c => c.id === br.clientId);
         return client?.name || '-';
@@ -52,12 +56,12 @@ const Dashboard = () => {
     },
     { 
       key: 'poidsNet', 
-      header: 'Poids Net | الوزن الصافي',
+      header: t('Poids Net', 'الوزن الصافي'),
       render: (br: typeof bonsReception[0]) => `${br.poidsNet.toLocaleString()} kg`
     },
     { 
       key: 'status', 
-      header: 'Statut | الحالة',
+      header: t('Statut', 'الحالة'),
       render: (br: typeof bonsReception[0]) => (
         <StatusBadge status={br.status} />
       )
@@ -67,41 +71,41 @@ const Dashboard = () => {
   return (
     <MainLayout>
       <PageHeader 
-        title="Tableau de bord | لوحة القيادة" 
-        description="Vue d'ensemble de votre huilerie | نظرة عامة على معصرتك"
+        title={t('Tableau de bord', 'لوحة القيادة')} 
+        description={t("Vue d'ensemble de votre huilerie", 'نظرة عامة على معصرتك')}
       />
 
       {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 mb-8" dir={language === 'ar' ? 'rtl' : 'ltr'}>
         <StatCard
-          title="Clients | الحرفاء"
+          title={t('Clients', 'الحرفاء')}
           value={clients.length}
-          subtitle="Total enregistrés | إجمالي المسجلين"
+          subtitle={t('Total enregistrés', 'إجمالي المسجلين')}
           icon={Users}
         />
         <StatCard
-          title="BR Ouverts | وصولات مفتوحة"
+          title={t('BR Ouverts', 'وصولات مفتوحة')}
           value={openBRs.length}
-          subtitle="En attente de trituration | في انتظار العصر"
+          subtitle={t('En attente de trituration', 'في انتظار العصر')}
           icon={Clock}
           variant="accent"
         />
         <StatCard
-          title="Huile Produite | الزيت المنتج"
+          title={t('Huile Produite', 'الزيت المنتج')}
           value={`${formatNumber(totalHuile)} L`}
-          subtitle="Total trituré | إجمالي المعصور"
+          subtitle={t('Total trituré', 'إجمالي المعصور')}
           icon={Droplets}
         />
         <StatCard
-          title="Stock Disponible | المخزون المتاح"
+          title={t('Stock Disponible', 'المخزون المتاح')}
           value={`${formatNumber(stockTotal)} L`}
-          subtitle={`${reservoirs.length} réservoirs | خزانات`}
+          subtitle={t(`${reservoirs.length} réservoirs`, `${reservoirs.length} خزانات`)}
           icon={Database}
         />
       </div>
 
       {/* Secondary Stats */}
-      <div className="grid gap-4 md:grid-cols-3 mb-8">
+      <div className="grid gap-4 md:grid-cols-3 mb-8" dir={language === 'ar' ? 'rtl' : 'ltr'}>
         <div className="stat-card">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -109,7 +113,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold font-serif">{bonsReception.length}</p>
-              <p className="text-sm text-muted-foreground">Bons de réception total | إجمالي وصولات الاستلام</p>
+              <p className="text-sm text-muted-foreground">{t('Bons de réception total', 'إجمالي وصولات الاستلام')}</p>
             </div>
           </div>
         </div>
@@ -120,7 +124,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold font-serif">{closedBRs.length}</p>
-              <p className="text-sm text-muted-foreground">BR traités | وصولات معالجة</p>
+              <p className="text-sm text-muted-foreground">{t('BR traités', 'وصولات معالجة')}</p>
             </div>
           </div>
         </div>
@@ -131,7 +135,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold font-serif">{unpaidInvoices.length}</p>
-              <p className="text-sm text-muted-foreground">Factures en attente | فواتير معلقة</p>
+              <p className="text-sm text-muted-foreground">{t('Factures en attente', 'فواتير معلقة')}</p>
             </div>
           </div>
         </div>
@@ -139,18 +143,22 @@ const Dashboard = () => {
 
       {/* Recent BRs */}
       <div className="mb-8">
-        <h2 className="font-serif text-xl font-semibold mb-4">Derniers Bons de Réception | آخر وصولات الاستلام</h2>
+        <h2 className="font-serif text-xl font-semibold mb-4" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+          {t('Derniers Bons de Réception', 'آخر وصولات الاستلام')}
+        </h2>
         <DataTable
           columns={brColumns}
           data={recentBRs}
-          emptyMessage="Aucun bon de réception | لا توجد وصولات استلام"
+          emptyMessage={t('Aucun bon de réception', 'لا توجد وصولات استلام')}
         />
       </div>
 
       {/* Reservoirs Status */}
       {reservoirs.length > 0 && (
         <div>
-          <h2 className="font-serif text-xl font-semibold mb-4">État des Réservoirs | حالة الخزانات</h2>
+          <h2 className="font-serif text-xl font-semibold mb-4" dir={language === 'ar' ? 'rtl' : 'ltr'}>
+            {t('État des Réservoirs', 'حالة الخزانات')}
+          </h2>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {reservoirs.map((reservoir) => {
               const fillPercentage = (reservoir.quantiteActuelle / reservoir.capaciteMax) * 100;
