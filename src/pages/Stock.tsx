@@ -32,12 +32,12 @@ import {
 import { useAppStore } from '@/store/appStore';
 import { useLanguageStore } from '@/store/languageStore';
 import { Reservoir, BonReception, Trituration, StockMovement } from '@/types';
-import { Plus, Database, Droplets, ArrowRightLeft, ShoppingCart, History, FileText, Download } from 'lucide-react';
+import { Plus, Database, Droplets, ArrowRightLeft, History, FileText, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
 import { fr, ar } from 'date-fns/locale';
 import { PDFDownloadLink } from '@react-pdf/renderer';
-import { BonLivraisonPDF } from '@/components/pdf/BonLivraisonPDF';
+
 import { ReservoirCostPDF } from '@/components/pdf/ReservoirCostPDF';
 
 const Stock = () => {
@@ -68,21 +68,21 @@ const Stock = () => {
     addReservoir, 
     affectToReservoir,
     transferBetweenReservoirs,
-    addSale,
+    
     updateTrituration,
   } = useAppStore();
   
   const [isReservoirDialogOpen, setIsReservoirDialogOpen] = useState(false);
   const [isAffectDialogOpen, setIsAffectDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
-  const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
+  
   const [isReservoirDetailDialogOpen, setIsReservoirDetailDialogOpen] = useState(false);
   const [selectedReservoirDetail, setSelectedReservoirDetail] = useState<Reservoir | null>(null);
   const [selectedTrit, setSelectedTrit] = useState<{ br: BonReception; trit: Trituration } | null>(null);
   const [selectedReservoir, setSelectedReservoir] = useState<string>('all');
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
-  const [lastCreatedBL, setLastCreatedBL] = useState<any>(null);
+  
   
   const [reservoirForm, setReservoirForm] = useState({
     code: '',
@@ -98,15 +98,6 @@ const Stock = () => {
     fromReservoirId: '',
     toReservoirId: '',
     quantite: '',
-  });
-  const [saleForm, setSaleForm] = useState({
-    clientId: '',
-    reservoirId: '',
-    quantite: '',
-    prixUnitaire: '',
-    tauxTVA: '19',
-    droitTimbre: '1',
-    date: format(new Date(), 'yyyy-MM-dd'),
   });
 
   // Get closed BRs that haven't been fully affected to stock
@@ -299,41 +290,6 @@ const Stock = () => {
     }
   };
 
-  const handleSale = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!saleForm.clientId || !saleForm.reservoirId || !saleForm.quantite || !saleForm.prixUnitaire) {
-      toast.error(t('Veuillez remplir tous les champs obligatoires', 'يرجى ملء جميع الحقول الإجبارية'));
-      return;
-    }
-
-    const bl = addSale({
-      clientId: saleForm.clientId,
-      reservoirId: saleForm.reservoirId,
-      quantite: Number(saleForm.quantite),
-      prixUnitaire: Number(saleForm.prixUnitaire),
-      tauxTVA: Number(saleForm.tauxTVA),
-      droitTimbre: Number(saleForm.droitTimbre),
-      date: new Date(saleForm.date),
-    });
-
-    if (bl) {
-      const client = clients.find(c => c.id === saleForm.clientId);
-      setLastCreatedBL({ bl, client });
-      toast.success(t(`Vente enregistrée - ${bl.number}`, `تم تسجيل البيع - ${bl.number}`));
-      setSaleForm({
-        clientId: '',
-        reservoirId: '',
-        quantite: '',
-        prixUnitaire: '',
-        tauxTVA: '19',
-        droitTimbre: '1',
-        date: format(new Date(), 'yyyy-MM-dd'),
-      });
-    } else {
-      toast.error(t('Vente impossible (quantité insuffisante dans le réservoir)', 'البيع مستحيل'));
-    }
-  };
 
   const openAffectDialog = (br: BonReception, trit: Trituration) => {
     setSelectedTrit({ br, trit });
@@ -622,156 +578,6 @@ const Stock = () => {
               </DialogContent>
             </Dialog>
 
-            <Dialog open={isSaleDialogOpen} onOpenChange={(open) => { setIsSaleDialogOpen(open); if (!open) setLastCreatedBL(null); }}>
-              <DialogTrigger asChild>
-                <Button variant="outline">
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                  {t('Vente', 'بيع')}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle className="font-serif">{t("Nouvelle vente d'huile", "بيع زيت جديد")}</DialogTitle>
-                </DialogHeader>
-                {lastCreatedBL ? (
-                  <div className="space-y-4">
-                    <div className="p-4 rounded-lg bg-success/10 text-center">
-                      <FileText className="h-12 w-12 mx-auto text-success mb-2" />
-                      <p className="font-semibold text-lg">{lastCreatedBL.bl.number}</p>
-                      <p className="text-sm text-muted-foreground">{t('Bon de livraison créé avec succès', 'تم إنشاء وصل التسليم')}</p>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">{t('Client', 'الحريف')}:</span>
-                        <p className="font-medium">{lastCreatedBL.client?.name}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">{t('Quantité', 'الكمية')}:</span>
-                        <p className="font-medium">{lastCreatedBL.bl.quantite.toLocaleString()} L</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">{t('Montant HT', 'المبلغ خام')}:</span>
-                        <p className="font-medium">{lastCreatedBL.bl.montantHT.toFixed(3)} DT</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">{t('Total TTC', 'المجموع')}:</span>
-                        <p className="font-semibold text-primary">{lastCreatedBL.bl.montantTTC.toFixed(3)} DT</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-3">
-                      <PDFDownloadLink
-                        document={<BonLivraisonPDF bl={lastCreatedBL.bl} client={lastCreatedBL.client} settings={settings} />}
-                        fileName={`${lastCreatedBL.bl.number}.pdf`}
-                        className="flex-1"
-                      >
-                        {({ loading }) => (
-                          <Button className="w-full" disabled={loading}>
-                            <Download className="mr-2 h-4 w-4" />
-                            {loading ? t('Préparation...', 'جاري التحميل...') : t('Télécharger PDF', 'تحميل PDF')}
-                          </Button>
-                        )}
-                      </PDFDownloadLink>
-                      <Button variant="outline" onClick={() => { setLastCreatedBL(null); }}>
-                        {t('Nouvelle vente', 'بيع جديد')}
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSale} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2 col-span-2">
-                        <Label>{t('Client *', 'الحريف *')}</Label>
-                        <Select
-                          value={saleForm.clientId}
-                          onValueChange={(value) => setSaleForm({ ...saleForm, clientId: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('Sélectionner un client...', 'اختر حريفاً...')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {clients.map((c) => (
-                              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2 col-span-2">
-                        <Label>{t('Réservoir *', 'الخزان *')}</Label>
-                        <Select
-                          value={saleForm.reservoirId}
-                          onValueChange={(value) => setSaleForm({ ...saleForm, reservoirId: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder={t('Sélectionner...', 'اختر...')} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {reservoirs.filter(r => r.quantiteActuelle > 0).map((r) => (
-                              <SelectItem key={r.id} value={r.id}>
-                                {r.code} - {r.quantiteActuelle.toLocaleString()} L
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{t('Quantité (L) *', 'الكمية *')}</Label>
-                        <Input
-                          type="number"
-                          value={saleForm.quantite}
-                          onChange={(e) => setSaleForm({ ...saleForm, quantite: e.target.value })}
-                          placeholder="0"
-                          step="0.1"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{t('Prix unitaire (DT/L) *', 'السعر *')}</Label>
-                        <Input
-                          type="number"
-                          value={saleForm.prixUnitaire}
-                          onChange={(e) => setSaleForm({ ...saleForm, prixUnitaire: e.target.value })}
-                          placeholder="0.000"
-                          step="0.001"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{t('Taux TVA (%)', 'ض.ق.م')}</Label>
-                        <Input
-                          type="number"
-                          value={saleForm.tauxTVA}
-                          onChange={(e) => setSaleForm({ ...saleForm, tauxTVA: e.target.value })}
-                          placeholder="19"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label>{t('Droit de Timbre (DT)', 'حق الطابع')}</Label>
-                        <Input
-                          type="number"
-                          value={saleForm.droitTimbre}
-                          onChange={(e) => setSaleForm({ ...saleForm, droitTimbre: e.target.value })}
-                          placeholder="1"
-                          step="0.001"
-                        />
-                      </div>
-                      <div className="space-y-2 col-span-2">
-                        <Label>{t('Date *', 'التاريخ *')}</Label>
-                        <Input
-                          type="date"
-                          value={saleForm.date}
-                          onChange={(e) => setSaleForm({ ...saleForm, date: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                    <div className="flex justify-end gap-3 pt-4">
-                      <Button type="button" variant="outline" onClick={() => setIsSaleDialogOpen(false)}>
-                        {t('Annuler', 'إلغاء')}
-                      </Button>
-                      <Button type="submit">{t('Créer le BL', 'إنشاء الوصل')}</Button>
-                    </div>
-                  </form>
-                )}
-              </DialogContent>
-            </Dialog>
-
             <Dialog open={isReservoirDialogOpen} onOpenChange={setIsReservoirDialogOpen}>
               <DialogTrigger asChild>
                 <Button>
@@ -850,7 +656,7 @@ const Stock = () => {
           title={t('Ventes (période)', 'المبيعات')}
           value={`${stats.totalSales.toLocaleString()} L`}
           subtitle={t('Huile vendue', 'الزيت المباع')}
-          icon={ShoppingCart}
+          icon={Droplets}
         />
       </div>
 
