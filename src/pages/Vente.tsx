@@ -23,28 +23,31 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useAppStore } from '@/store/appStore';
+import { useLanguageStore } from '@/store/languageStore';
 import { BonLivraison, PaymentMode } from '@/types';
 import { ShoppingCart, FileText, Download, CheckCircle2, Clock, CreditCard, Wallet, ArrowRightLeft } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
+import { fr, ar } from 'date-fns/locale';
 import { PDFDownloadLink } from '@react-pdf/renderer';
 import { BonLivraisonPDF } from '@/components/pdf/BonLivraisonPDF';
 import { formatNumber } from '@/lib/utils';
 
-const paymentModeLabels: Record<PaymentMode, string> = {
-  especes: 'Espèces | نقداً',
-  virement: 'Virement | تحويل',
-  compensation: 'Compensation | مقاصة',
-};
-
-const paymentModeIcons: Record<PaymentMode, React.ReactNode> = {
-  especes: <Wallet className="h-4 w-4" />,
-  virement: <CreditCard className="h-4 w-4" />,
-  compensation: <ArrowRightLeft className="h-4 w-4" />,
-};
-
 export default function Vente() {
+  const { t, language } = useLanguageStore();
+  const dateLocale = language === 'ar' ? ar : fr;
+
+  const paymentModeLabels: Record<PaymentMode, string> = {
+    especes: t('Espèces', 'نقداً'),
+    virement: t('Virement', 'تحويل'),
+    compensation: t('Compensation', 'مقاصة'),
+  };
+
+  const paymentModeIcons: Record<PaymentMode, React.ReactNode> = {
+    especes: <Wallet className="h-4 w-4" />,
+    virement: <CreditCard className="h-4 w-4" />,
+    compensation: <ArrowRightLeft className="h-4 w-4" />,
+  };
   const { 
     clients, 
     reservoirs, 
@@ -261,8 +264,8 @@ export default function Vente() {
   return (
     <MainLayout>
       <PageHeader 
-        title="Ventes d'Huile | مبيعات الزيت" 
-        description="Gestion des ventes en gros et suivi des paiements | إدارة المبيعات بالجملة ومتابعة المدفوعات"
+        title={t("Ventes d'Huile", 'مبيعات الزيت')} 
+        description={t('Gestion des ventes en gros et suivi des paiements', 'إدارة المبيعات بالجملة ومتابعة المدفوعات')}
         action={
           <Dialog open={isSaleDialogOpen} onOpenChange={(open) => { setIsSaleDialogOpen(open); if (!open) setLastCreatedBL(null); }}>
             <DialogTrigger asChild>
