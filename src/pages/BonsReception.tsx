@@ -71,7 +71,7 @@ const BonsReception = () => {
     ? Number(formData.poidsPlein) - Number(formData.poidsVide) 
     : 0;
 
-  const printEtiquette = async (br: BonReception, clientName: string) => {
+  const downloadEtiquette = async (br: BonReception, clientName: string) => {
     try {
       const blob = await pdf(
         <BREtiquettePDF
@@ -83,15 +83,15 @@ const BonsReception = () => {
         />
       ).toBlob();
       const url = URL.createObjectURL(blob);
-      const printWindow = window.open(url, '_blank');
-      if (printWindow) {
-        printWindow.onload = () => {
-          printWindow.print();
-        };
-      }
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `Etiquette-${br.number}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
       URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error printing etiquette:', error);
+      console.error('Error downloading etiquette:', error);
     }
   };
 
@@ -126,8 +126,8 @@ const BonsReception = () => {
     const client = clients.find(c => c.id === formData.clientId);
     const clientName = client?.name || '-';
 
-    // Print etiquette automatically
-    await printEtiquette(newBR, clientName);
+    // Download etiquette automatically
+    await downloadEtiquette(newBR, clientName);
 
     const natureLabel = formData.nature === 'service' ? 'Service' : 'Bawaz';
     toast.success(t(`BR ${natureLabel} créé avec succès`, `تم إنشاء وصل ${formData.nature === 'service' ? 'الخدمة' : 'الباواز'} بنجاح`));
@@ -212,9 +212,9 @@ const BonsReception = () => {
               size="sm" 
               onClick={(e) => { 
                 e.stopPropagation(); 
-                printEtiquette(br, client?.name || '-'); 
+                downloadEtiquette(br, client?.name || '-'); 
               }}
-              title={t('Imprimer étiquette', 'طباعة الملصق')}
+              title={t('Télécharger étiquette', 'تحميل الملصق')}
             >
               <Printer className="h-4 w-4" />
             </Button>
