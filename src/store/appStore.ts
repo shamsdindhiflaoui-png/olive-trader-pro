@@ -1,10 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Client, BonReception, Trituration, Reservoir, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment, InvoiceSource, ClientOperation, PaymentReceipt, PaymentReceiptLine, PaymentMode, BLPayment } from '@/types';
+import { Client, BonReception, Trituration, Reservoir, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment, InvoiceSource, ClientOperation, PaymentReceipt, PaymentReceiptLine, PaymentMode, BLPayment, DeletedOperation } from '@/types';
 
 interface AppState {
   clients: Client[];
   clientOperations: ClientOperation[];
+  deletedOperations: DeletedOperation[];
   bonsReception: BonReception[];
   triturations: Trituration[];
   reservoirs: Reservoir[];
@@ -22,9 +23,10 @@ interface AppState {
   deleteClient: (id: string) => void;
   
   // Client operations (Bawaza)
-  addClientOperation: (operation: Omit<ClientOperation, 'id' | 'createdAt'>) => void;
-  deleteClientOperation: (id: string) => void;
+  addClientOperation: (operation: Omit<ClientOperation, 'id' | 'createdAt' | 'receiptNumber'>) => ClientOperation;
+  deleteClientOperation: (id: string, reason?: string) => void;
   getClientOperations: (clientId: string) => ClientOperation[];
+  getDeletedOperations: (clientId?: string) => DeletedOperation[];
   
   // BR actions
   addBR: (br: Omit<BonReception, 'id' | 'number' | 'poidsNet' | 'status' | 'createdAt'>) => void;
@@ -68,6 +70,7 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       clients: [],
       clientOperations: [],
+      deletedOperations: [],
       bonsReception: [],
       triturations: [],
       reservoirs: [],
@@ -103,20 +106,63 @@ export const useAppStore = create<AppState>()(
       })),
       
       // Client operations (Bawaza - capital FDR, avances)
-      addClientOperation: (operationData) => set((state) => ({
-        clientOperations: [...state.clientOperations, {
+      addClientOperation: (operationData) => {
+        const state = get();
+        const receiptPrefix = operationData.type === 'capital_fdr' ? 'REC-CAP' : 'REC-AVA';
+        const existingCount = state.clientOperations.filter(op => op.type === operationData.type).length;
+        const receiptNumber = `${receiptPrefix}-${String(existingCount + 1).padStart(4, '0')}`;
+        
+        const newOperation: ClientOperation = {
           ...operationData,
           id: generateId(),
+          receiptNumber,
           createdAt: new Date(),
-        }]
-      })),
+        };
+        
+        set((state) => ({
+          clientOperations: [...state.clientOperations, newOperation]
+        }));
+        
+        return newOperation;
+      },
       
-      deleteClientOperation: (id) => set((state) => ({
-        clientOperations: state.clientOperations.filter(op => op.id !== id)
-      })),
+      deleteClientOperation: (id, reason) => {
+        const state = get();
+        const operation = state.clientOperations.find(op => op.id === id);
+        if (!operation) return;
+        
+        const client = state.clients.find(c => c.id === operation.clientId);
+        
+        const deletedRecord: DeletedOperation = {
+          id: generateId(),
+          originalId: operation.id,
+          clientId: operation.clientId,
+          clientName: client?.name || 'Client inconnu',
+          type: operation.type,
+          date: operation.date,
+          libelle: operation.libelle,
+          montantDT: operation.montantDT,
+          receiptNumber: operation.receiptNumber,
+          deletedAt: new Date(),
+          deletedReason: reason,
+        };
+        
+        set((state) => ({
+          clientOperations: state.clientOperations.filter(op => op.id !== id),
+          deletedOperations: [...state.deletedOperations, deletedRecord],
+        }));
+      },
       
       getClientOperations: (clientId) => {
         return get().clientOperations.filter(op => op.clientId === clientId);
+      },
+      
+      getDeletedOperations: (clientId) => {
+        const state = get();
+        if (clientId) {
+          return state.deletedOperations.filter(op => op.clientId === clientId);
+        }
+        return state.deletedOperations;
       },
       
       // BR actions
@@ -583,6 +629,7 @@ export const useAppStore = create<AppState>()(
       clearAllData: () => set(() => ({
         clients: [],
         clientOperations: [],
+        deletedOperations: [],
         bonsReception: [],
         triturations: [],
         reservoirs: [],

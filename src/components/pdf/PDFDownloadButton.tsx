@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, ReactNode } from 'react';
 import { pdf } from '@react-pdf/renderer';
 import { Button } from '@/components/ui/button';
 import { FileDown, Loader2 } from 'lucide-react';
@@ -9,6 +9,7 @@ interface PDFDownloadButtonProps {
   label?: string;
   variant?: 'default' | 'outline' | 'ghost' | 'secondary';
   size?: 'default' | 'sm' | 'lg' | 'icon';
+  icon?: ReactNode;
 }
 
 export function PDFDownloadButton({ 
@@ -16,7 +17,8 @@ export function PDFDownloadButton({
   fileName, 
   label = 'Télécharger PDF',
   variant = 'outline',
-  size = 'sm'
+  size = 'sm',
+  icon
 }: PDFDownloadButtonProps) {
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -49,9 +51,9 @@ export function PDFDownloadButton({
       {isGenerating ? (
         <Loader2 className="h-4 w-4 animate-spin" />
       ) : (
-        <FileDown className="h-4 w-4" />
+        icon || <FileDown className="h-4 w-4" />
       )}
-      {size !== 'icon' && <span className="ml-2">{label}</span>}
+      {size !== 'icon' && label && <span className="ml-2">{label}</span>}
     </Button>
   );
 }
