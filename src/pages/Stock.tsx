@@ -75,6 +75,8 @@ const Stock = () => {
   const [isAffectDialogOpen, setIsAffectDialogOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
   const [isSaleDialogOpen, setIsSaleDialogOpen] = useState(false);
+  const [isReservoirDetailDialogOpen, setIsReservoirDetailDialogOpen] = useState(false);
+  const [selectedReservoirDetail, setSelectedReservoirDetail] = useState<Reservoir | null>(null);
   const [selectedTrit, setSelectedTrit] = useState<{ br: BonReception; trit: Trituration } | null>(null);
   const [selectedReservoir, setSelectedReservoir] = useState<string>('all');
   const [dateDebut, setDateDebut] = useState('');
@@ -294,11 +296,74 @@ const Stock = () => {
     setIsAffectDialogOpen(true);
   };
 
+  const openReservoirDetail = (reservoir: Reservoir) => {
+    setSelectedReservoirDetail(reservoir);
+    setIsReservoirDetailDialogOpen(true);
+  };
+
+  // Calculate reservoir stock cost details
+  const getReservoirStockDetails = (reservoirId: string) => {
+    // Get all entries for this reservoir (only bawaz with prices)
+    const affectations = stockAffectations.filter(a => a.reservoirId === reservoirId);
+    
+    const entries: {
+      brId: string;
+      brNumber: string;
+      clientName: string;
+      date: Date;
+      quantite: number;
+      prixUnitaire: number;
+      montant: number;
+    }[] = [];
+
+    let totalQuantiteAchetee = 0;
+    let totalMontant = 0;
+
+    affectations.forEach(aff => {
+      const br = bonsReception.find(b => b.id === aff.brId);
+      const trit = triturations.find(t => t.brId === aff.brId);
+      const client = br ? clients.find(c => c.id === br.clientId) : null;
+      
+      // Only include bawaz BRs with prices
+      if (br && br.nature === 'bawaz' && trit?.prixHuileKg) {
+        const montant = aff.quantite * trit.prixHuileKg;
+        entries.push({
+          brId: br.id,
+          brNumber: br.number,
+          clientName: client?.name || '-',
+          date: aff.date,
+          quantite: aff.quantite,
+          prixUnitaire: trit.prixHuileKg,
+          montant,
+        });
+        totalQuantiteAchetee += aff.quantite;
+        totalMontant += montant;
+      }
+    });
+
+    // Calculate average price per kg
+    const prixMoyen = totalQuantiteAchetee > 0 ? totalMontant / totalQuantiteAchetee : 0;
+
+    return {
+      entries: entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+      totalQuantiteAchetee,
+      totalMontant,
+      prixMoyen,
+    };
+  };
+
   const reservoirColumns = [
     { 
       key: 'code', 
       header: t('Code', 'الرمز'),
-      render: (r: Reservoir) => <span className="font-medium text-primary">{r.code}</span>
+      render: (r: Reservoir) => (
+        <button
+          onClick={() => openReservoirDetail(r)}
+          className="font-medium text-primary hover:underline cursor-pointer"
+        >
+          {r.code}
+        </button>
+      )
     },
     { 
       key: 'capaciteMax', 
@@ -329,9 +394,37 @@ const Stock = () => {
       }
     },
     { 
+      key: 'prixMoyen', 
+      header: t('Prix Moyen/Kg', 'متوسط السعر/كغ'),
+      render: (r: Reservoir) => {
+        const details = getReservoirStockDetails(r.id);
+        if (details.prixMoyen > 0) {
+          return (
+            <span className="font-medium text-orange-600">
+              {details.prixMoyen.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT
+            </span>
+          );
+        }
+        return <span className="text-muted-foreground">-</span>;
+      }
+    },
+    { 
       key: 'status', 
       header: t('Statut', 'الحالة'),
       render: (r: Reservoir) => <StatusBadge status={r.status} />
+    },
+    { 
+      key: 'actions', 
+      header: t('Détail', 'التفاصيل'),
+      render: (r: Reservoir) => (
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => openReservoirDetail(r)}
+        >
+          <FileText className="h-4 w-4" />
+        </Button>
+      )
     },
   ];
 
@@ -963,6 +1056,135 @@ const Stock = () => {
                   </Button>
                 </div>
               </form>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* Reservoir Detail Dialog */}
+      <Dialog open={isReservoirDetailDialogOpen} onOpenChange={(open) => { setIsReservoirDetailDialogOpen(open); if (!open) setSelectedReservoirDetail(null); }}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-serif flex items-center gap-2">
+              <Database className="h-5 w-5 text-primary" />
+              {t('Détail du Réservoir', 'تفاصيل الخزان')} - {selectedReservoirDetail?.code}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedReservoirDetail && (() => {
+            const details = getReservoirStockDetails(selectedReservoirDetail.id);
+            const percentage = (selectedReservoirDetail.quantiteActuelle / selectedReservoirDetail.capaciteMax) * 100;
+            
+            return (
+              <div className="space-y-6">
+                {/* Reservoir Info */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 rounded-lg bg-muted">
+                    <p className="text-sm text-muted-foreground">{t('Capacité Max', 'السعة القصوى')}</p>
+                    <p className="text-xl font-semibold">{selectedReservoirDetail.capaciteMax.toLocaleString()} L</p>
+                  </div>
+                  <div className="p-4 rounded-lg bg-muted">
+                    <p className="text-sm text-muted-foreground">{t('Quantité Actuelle', 'الكمية الحالية')}</p>
+                    <p className="text-xl font-semibold text-primary">{selectedReservoirDetail.quantiteActuelle.toLocaleString()} L</p>
+                  </div>
+                </div>
+
+                {/* Fill Bar */}
+                <div className="p-4 rounded-lg bg-muted/50">
+                  <div className="flex justify-between text-sm mb-2">
+                    <span className="text-muted-foreground">{t('Taux de remplissage', 'نسبة الامتلاء')}</span>
+                    <span className="font-semibold">{percentage.toFixed(1)}%</span>
+                  </div>
+                  <div className="h-4 rounded-full bg-muted overflow-hidden">
+                    <div 
+                      className="h-full rounded-full golden-gradient"
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Stock Cost Summary */}
+                <div className="p-4 rounded-lg border-2 border-orange-200 bg-orange-50 space-y-3">
+                  <h3 className="font-semibold text-orange-800 flex items-center gap-2">
+                    💸 {t('Coût du Stock (BR Bawaz)', 'تكلفة المخزون (وصولات الباواز)')}
+                  </h3>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <p className="text-xs text-orange-600">{t('Quantité achetée', 'الكمية المشتراة')}</p>
+                      <p className="text-lg font-bold text-orange-800">
+                        {details.totalQuantiteAchetee.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-orange-600">{t('Montant total', 'المبلغ الإجمالي')}</p>
+                      <p className="text-lg font-bold text-orange-800">
+                        {details.totalMontant.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT
+                      </p>
+                    </div>
+                    <div className="bg-orange-100 rounded-lg p-2 -m-1">
+                      <p className="text-xs text-orange-600">{t('Prix moyen/Kg', 'متوسط السعر/كغ')}</p>
+                      <p className="text-xl font-bold text-orange-800">
+                        {details.prixMoyen > 0 
+                          ? `${details.prixMoyen.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT`
+                          : '-'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Affectations Table */}
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-foreground">
+                    {t('Détail des affectations (Bawaz)', 'تفاصيل التخصيصات (الباواز)')}
+                  </h3>
+                  {details.entries.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Droplets className="h-10 w-10 mx-auto mb-2 opacity-50" />
+                      <p>{t('Aucune affectation bawaz avec prix', 'لا توجد تخصيصات باواز بأسعار')}</p>
+                    </div>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted">
+                          <tr>
+                            <th className="px-3 py-2 text-left">{t('Date', 'التاريخ')}</th>
+                            <th className="px-3 py-2 text-left">{t('BR', 'الوصل')}</th>
+                            <th className="px-3 py-2 text-left">{t('Client', 'الحريف')}</th>
+                            <th className="px-3 py-2 text-right">{t('Quantité', 'الكمية')}</th>
+                            <th className="px-3 py-2 text-right">{t('Prix/Kg', 'السعر/كغ')}</th>
+                            <th className="px-3 py-2 text-right">{t('Montant', 'المبلغ')}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border">
+                          {details.entries.map((entry, idx) => (
+                            <tr key={idx} className="hover:bg-muted/50">
+                              <td className="px-3 py-2">{format(new Date(entry.date), 'dd/MM/yyyy', { locale: dateLocale })}</td>
+                              <td className="px-3 py-2 font-medium text-primary">{entry.brNumber}</td>
+                              <td className="px-3 py-2">{entry.clientName}</td>
+                              <td className="px-3 py-2 text-right">{entry.quantite.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L</td>
+                              <td className="px-3 py-2 text-right text-orange-600 font-medium">{entry.prixUnitaire.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT</td>
+                              <td className="px-3 py-2 text-right font-semibold">{entry.montant.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-orange-100">
+                          <tr className="font-semibold text-orange-800">
+                            <td colSpan={3} className="px-3 py-2">{t('TOTAL', 'المجموع')}</td>
+                            <td className="px-3 py-2 text-right">{details.totalQuantiteAchetee.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L</td>
+                            <td className="px-3 py-2 text-right">{details.prixMoyen.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT</td>
+                            <td className="px-3 py-2 text-right">{details.totalMontant.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT</td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end">
+                  <Button variant="outline" onClick={() => setIsReservoirDetailDialogOpen(false)}>
+                    {t('Fermer', 'إغلاق')}
+                  </Button>
+                </div>
+              </div>
             );
           })()}
         </DialogContent>
