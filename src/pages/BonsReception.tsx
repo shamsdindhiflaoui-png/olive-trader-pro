@@ -378,6 +378,42 @@ const BonsReception = () => {
                   />
                 </div>
 
+                {/* Aperçu de l'étiquette */}
+                {formData.clientId && poidsNet > 0 && (
+                  <div className="space-y-2">
+                    <Label>{t('Aperçu Étiquette', 'معاينة الملصق')}</Label>
+                    <div className="border border-foreground rounded p-2 bg-background" style={{ width: '280px', height: '120px' }}>
+                      <div className="border border-foreground h-full p-2 flex flex-col justify-between">
+                        <div className="flex justify-between items-start border-b border-foreground pb-1">
+                          <span className="font-bold text-sm">BR-XXXX</span>
+                          <span className="text-[10px] text-right">
+                            {format(new Date(formData.date), 'dd/MM/yyyy')} {format(new Date(), 'HH:mm')}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center flex-1 py-1">
+                          <div className="flex items-center gap-3">
+                            <div>
+                              <span className="text-[9px] text-muted-foreground">Client:</span>
+                              <p className="font-bold text-xs">{clients.find(c => c.id === formData.clientId)?.name || '-'}</p>
+                            </div>
+                            <div className="border border-foreground p-1 text-center min-w-[70px]">
+                              <span className="text-[8px] block">Poids Net</span>
+                              <span className="font-bold text-sm">{poidsNet.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</span>
+                              <span className="text-[8px] border border-foreground px-1 block mt-0.5">
+                                {formData.nature === 'service' ? 'Svc' : 'Bwz'}
+                              </span>
+                            </div>
+                          </div>
+                          <div className="w-8 h-8 border border-foreground flex items-center justify-center text-[6px]">
+                            QR
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">{t('Format: 70×30mm - Impression N&B', 'الحجم: 70×30 مم - طباعة أبيض وأسود')}</p>
+                  </div>
+                )}
+
                 <div className="flex justify-end gap-3 pt-4">
                   <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                     {t('Annuler', 'إلغاء')}
