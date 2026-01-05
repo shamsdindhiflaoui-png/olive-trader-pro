@@ -10,83 +10,75 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: {
-    padding: 10,
+    padding: 4,
     fontFamily: 'Amiri',
-    fontSize: 10,
+    fontSize: 6,
   },
   container: {
-    border: '2pt dashed #333',
-    padding: 12,
-    borderRadius: 4,
+    border: '1pt dashed #333',
+    padding: 4,
+    borderRadius: 2,
+    height: '100%',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 10,
-    borderBottom: '1pt solid #333',
-    paddingBottom: 8,
+    marginBottom: 3,
+    borderBottom: '0.5pt solid #333',
+    paddingBottom: 2,
   },
   brNumber: {
-    fontSize: 16,
+    fontSize: 10,
     fontWeight: 'bold',
   },
   dateTime: {
-    fontSize: 9,
+    fontSize: 5,
     textAlign: 'right',
   },
   mainContent: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    alignItems: 'center',
+    flex: 1,
   },
   infoSection: {
     flex: 1,
-  },
-  qrSection: {
-    width: 60,
-    height: 60,
-    marginLeft: 10,
-  },
-  qrImage: {
-    width: 60,
-    height: 60,
-  },
-  row: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 6,
-    paddingVertical: 4,
+    alignItems: 'center',
+    gap: 6,
+  },
+  clientSection: {
+    flex: 1,
   },
   label: {
-    fontSize: 9,
+    fontSize: 5,
     color: '#666',
   },
   value: {
-    fontSize: 11,
+    fontSize: 7,
     fontWeight: 'bold',
   },
   weightSection: {
     backgroundColor: '#f0f0f0',
-    padding: 8,
-    marginTop: 6,
-    borderRadius: 4,
+    padding: 3,
+    borderRadius: 2,
     alignItems: 'center',
+    minWidth: 50,
   },
   weightLabel: {
-    fontSize: 9,
+    fontSize: 4,
     color: '#666',
-    marginBottom: 2,
   },
   weightValue: {
-    fontSize: 18,
+    fontSize: 9,
     fontWeight: 'bold',
   },
   natureBadge: {
-    padding: '3 6',
-    borderRadius: 4,
-    fontSize: 7,
-    marginTop: 4,
+    padding: '1 3',
+    borderRadius: 2,
+    fontSize: 4,
+    marginTop: 1,
   },
   serviceBadge: {
     backgroundColor: '#dcfce7',
@@ -95,6 +87,15 @@ const styles = StyleSheet.create({
   bawazBadge: {
     backgroundColor: '#ffedd5',
     color: '#9a3412',
+  },
+  qrSection: {
+    width: 22,
+    height: 22,
+    marginLeft: 4,
+  },
+  qrImage: {
+    width: 22,
+    height: 22,
   },
 });
 
@@ -109,32 +110,31 @@ interface BREtiquettePDFProps {
 
 export function BREtiquettePDF({ brNumber, clientName, poidsNet, date, nature, qrCodeDataUrl }: BREtiquettePDFProps) {
   const formattedDate = format(date, 'dd/MM/yyyy', { locale: fr });
-  const formattedTime = format(date, 'HH:mm:ss');
+  const formattedTime = format(date, 'HH:mm');
 
   return (
     <Document>
-      <Page size={[226, 170]} style={styles.page}>
+      <Page size={[170, 85]} style={styles.page}>
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.brNumber}>{brNumber}</Text>
             <View>
-              <Text style={styles.dateTime}>{formattedDate}</Text>
-              <Text style={styles.dateTime}>{formattedTime}</Text>
+              <Text style={styles.dateTime}>{formattedDate} {formattedTime}</Text>
             </View>
           </View>
 
           <View style={styles.mainContent}>
             <View style={styles.infoSection}>
-              <View style={styles.row}>
+              <View style={styles.clientSection}>
                 <Text style={styles.label}>Client:</Text>
                 <Text style={styles.value}>{clientName}</Text>
               </View>
 
               <View style={styles.weightSection}>
                 <Text style={styles.weightLabel}>Poids Net</Text>
-                <Text style={styles.weightValue}>{poidsNet.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })} Kg</Text>
+                <Text style={styles.weightValue}>{poidsNet.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</Text>
                 <View style={[styles.natureBadge, nature === 'service' ? styles.serviceBadge : styles.bawazBadge]}>
-                  <Text>{nature === 'service' ? 'Service' : 'Bawaz'}</Text>
+                  <Text>{nature === 'service' ? 'Svc' : 'Bwz'}</Text>
                 </View>
               </View>
             </View>
