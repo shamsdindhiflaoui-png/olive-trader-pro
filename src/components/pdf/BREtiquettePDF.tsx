@@ -10,31 +10,33 @@ Font.register({
 
 const styles = StyleSheet.create({
   page: {
-    padding: 4,
+    padding: 3,
     fontFamily: 'Amiri',
-    fontSize: 6,
+    fontSize: 7,
+    backgroundColor: '#ffffff',
   },
   container: {
-    border: '1pt dashed #333',
+    border: '1pt solid #000',
     padding: 4,
-    borderRadius: 2,
     height: '100%',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 3,
-    borderBottom: '0.5pt solid #333',
+    marginBottom: 2,
+    borderBottom: '0.5pt solid #000',
     paddingBottom: 2,
   },
   brNumber: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
+    color: '#000',
   },
   dateTime: {
-    fontSize: 5,
+    fontSize: 6,
     textAlign: 'right',
+    color: '#000',
   },
   mainContent: {
     flexDirection: 'row',
@@ -46,56 +48,50 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   clientSection: {
     flex: 1,
   },
   label: {
-    fontSize: 5,
-    color: '#666',
+    fontSize: 6,
+    color: '#000',
   },
   value: {
-    fontSize: 7,
-    fontWeight: 'bold',
-  },
-  weightSection: {
-    backgroundColor: '#f0f0f0',
-    padding: 3,
-    borderRadius: 2,
-    alignItems: 'center',
-    minWidth: 50,
-  },
-  weightLabel: {
-    fontSize: 4,
-    color: '#666',
-  },
-  weightValue: {
     fontSize: 9,
     fontWeight: 'bold',
+    color: '#000',
+  },
+  weightSection: {
+    border: '0.5pt solid #000',
+    padding: 3,
+    alignItems: 'center',
+    minWidth: 55,
+  },
+  weightLabel: {
+    fontSize: 5,
+    color: '#000',
+  },
+  weightValue: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: '#000',
   },
   natureBadge: {
-    padding: '1 3',
-    borderRadius: 2,
-    fontSize: 4,
+    padding: '1 4',
+    border: '0.5pt solid #000',
+    fontSize: 5,
     marginTop: 1,
-  },
-  serviceBadge: {
-    backgroundColor: '#dcfce7',
-    color: '#166534',
-  },
-  bawazBadge: {
-    backgroundColor: '#ffedd5',
-    color: '#9a3412',
+    color: '#000',
   },
   qrSection: {
-    width: 22,
-    height: 22,
+    width: 26,
+    height: 26,
     marginLeft: 4,
   },
   qrImage: {
-    width: 22,
-    height: 22,
+    width: 26,
+    height: 26,
   },
 });
 
@@ -114,7 +110,7 @@ export function BREtiquettePDF({ brNumber, clientName, poidsNet, date, nature, q
 
   return (
     <Document>
-      <Page size={[170, 85]} style={styles.page}>
+      <Page size={[198, 85]} style={styles.page}>
         <View style={styles.container}>
           <View style={styles.header}>
             <Text style={styles.brNumber}>{brNumber}</Text>
@@ -133,7 +129,7 @@ export function BREtiquettePDF({ brNumber, clientName, poidsNet, date, nature, q
               <View style={styles.weightSection}>
                 <Text style={styles.weightLabel}>Poids Net</Text>
                 <Text style={styles.weightValue}>{poidsNet.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</Text>
-                <View style={[styles.natureBadge, nature === 'service' ? styles.serviceBadge : styles.bawazBadge]}>
+                <View style={styles.natureBadge}>
                   <Text>{nature === 'service' ? 'Svc' : 'Bwz'}</Text>
                 </View>
               </View>
