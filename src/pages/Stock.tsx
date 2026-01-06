@@ -119,9 +119,8 @@ const Stock = () => {
       const trit = tritsByBR[br.id];
       if (!trit) return false;
       
-      const targetQuantity = client.transactionType === 'bawaza' 
-        ? (trit.quantiteHuile * settings.partHuilerieBawaza) / 100
-        : trit.quantiteHuile;
+      // Bawaza clients sell 100% of oil to the mill
+      const targetQuantity = trit.quantiteHuile;
       
       return totalAffected < targetQuantity;
     })
@@ -224,9 +223,8 @@ const Stock = () => {
     const client = clients.find(c => c.id === selectedTrit.br.clientId);
     const existingAffectations = stockAffectations.filter(a => a.brId === selectedTrit.br.id);
     const totalDejaAffecte = existingAffectations.reduce((sum, a) => sum + a.quantite, 0);
-    const targetQuantity = client?.transactionType === 'bawaza' 
-      ? (selectedTrit.trit.quantiteHuile * settings.partHuilerieBawaza) / 100
-      : selectedTrit.trit.quantiteHuile;
+    // Bawaza clients sell 100% of oil to the mill
+    const targetQuantity = selectedTrit.trit.quantiteHuile;
     const resteAAffecterAvant = targetQuantity - totalDejaAffecte;
 
     if (quantity > resteAAffecterAvant) {
@@ -700,9 +698,8 @@ const Stock = () => {
               {pendingAffectations.map(({ br, trit, client }) => {
                 const affectations = stockAffectations.filter(a => a.brId === br.id);
                 const totalAffected = affectations.reduce((sum, a) => sum + a.quantite, 0);
-                const targetQuantity = client.transactionType === 'bawaza' 
-                  ? (trit.quantiteHuile * settings.partHuilerieBawaza) / 100
-                  : trit.quantiteHuile;
+                // Bawaza clients sell 100% of oil to the mill
+                const targetQuantity = trit.quantiteHuile;
                 const remaining = targetQuantity - totalAffected;
 
                 return (
@@ -828,9 +825,8 @@ const Stock = () => {
             // Calculate remaining quantity to affect
             const existingAffectations = stockAffectations.filter(a => a.brId === selectedTrit.br.id);
             const totalDejaAffecte = existingAffectations.reduce((sum, a) => sum + a.quantite, 0);
-            const targetQuantity = client?.transactionType === 'bawaza' 
-              ? (selectedTrit.trit.quantiteHuile * settings.partHuilerieBawaza) / 100
-              : selectedTrit.trit.quantiteHuile;
+            // Bawaza clients sell 100% of oil to the mill
+            const targetQuantity = selectedTrit.trit.quantiteHuile;
             const resteAAfffecter = targetQuantity - totalDejaAffecte;
             
             // Get selected reservoir capacity
