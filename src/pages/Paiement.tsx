@@ -40,8 +40,7 @@ export default function Paiement() {
   const dateLocale = language === 'ar' ? ar : fr;
 
   const natureLabels: Record<BRNature, string> = {
-    service: t('Service', 'خدمة'),
-    bawaz: t('Bawaz', 'باواز'),
+    bawaz: t('Achat Huile', 'شراء زيت'),
   };
 
   const cashFlowLabels: Record<CashFlowType, string> = {
