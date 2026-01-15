@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { Client, ClientGros, ClientDetailType, ClientGrosType, BonReception, Trituration, Reservoir, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment, InvoiceSource, ClientOperation, PaymentReceipt, PaymentReceiptLine, PaymentMode, BLPayment, DeletedOperation } from '@/types';
+import { Client, ClientGros, ClientGrosType, BonReception, Trituration, Reservoir, Settings, StockAffectation, StockMovement, BonLivraison, Invoice, InvoiceLine, InvoicePayment, InvoiceSource, ClientOperation, PaymentReceipt, PaymentReceiptLine, PaymentMode, BLPayment, DeletedOperation } from '@/types';
 
 interface AppState {
   clients: Client[];
@@ -19,7 +19,7 @@ interface AppState {
   settings: Settings;
   
   // Client Détail actions
-  addClient: (client: Omit<Client, 'id' | 'code' | 'createdAt' | 'transactionType'>) => void;
+  addClient: (client: Omit<Client, 'id' | 'code' | 'createdAt'>) => void;
   updateClient: (id: string, client: Partial<Client>) => void;
   deleteClient: (id: string) => void;
   
@@ -97,31 +97,17 @@ export const useAppStore = create<AppState>()(
       },
       
       // Client Détail actions
-      addClient: (clientData) => set((state) => {
-        // Map clientType to transactionType for legacy support
-        const transactionType = clientData.clientType === 'agriculteur' ? 'facon' : 'bawaza';
-        return {
-          clients: [...state.clients, {
-            ...clientData,
-            transactionType,
-            id: generateId(),
-            code: generateCode('CLT', state.clients.length),
-            createdAt: new Date(),
-          }]
-        };
-      }),
+      addClient: (clientData) => set((state) => ({
+        clients: [...state.clients, {
+          ...clientData,
+          id: generateId(),
+          code: generateCode('CLT', state.clients.length),
+          createdAt: new Date(),
+        }]
+      })),
       
       updateClient: (id, clientData) => set((state) => ({
-        clients: state.clients.map(c => {
-          if (c.id === id) {
-            // Update transactionType if clientType changed
-            const transactionType = clientData.clientType 
-              ? (clientData.clientType === 'agriculteur' ? 'facon' : 'bawaza')
-              : c.transactionType;
-            return { ...c, ...clientData, transactionType };
-          }
-          return c;
-        })
+        clients: state.clients.map(c => c.id === id ? { ...c, ...clientData } : c)
       })),
       
       deleteClient: (id) => set((state) => ({
@@ -214,13 +200,13 @@ export const useAppStore = create<AppState>()(
       
       addBR: (brData) => {
         const state = get();
-        // Generate number based on nature: S for Service, B for Bawaz
-        const prefix = brData.nature === 'service' ? 'S' : 'B';
-        const count = state.bonsReception.filter(br => br.nature === brData.nature).length;
-        const number = `${prefix}${String(count + 1).padStart(4, '0')}`;
+        // All BRs are now 'bawaz' type
+        const count = state.bonsReception.length;
+        const number = `BR${String(count + 1).padStart(4, '0')}`;
         
         const newBR: BonReception = {
           ...brData,
+          nature: 'bawaz',
           id: generateId(),
           number,
           poidsNet: brData.poidsPlein - brData.poidsVide,
@@ -256,7 +242,10 @@ export const useAppStore = create<AppState>()(
             createdAt: new Date(),
           }]
         }));
-        get().closeBR(tritData.brId);
+        // Only close BR if it's a BR-based trituration
+        if (tritData.type === 'br' && tritData.brId) {
+          get().closeBR(tritData.brId);
+        }
       },
       
       updateTrituration: (brId, data) => set((state) => ({
@@ -465,7 +454,7 @@ export const useAppStore = create<AppState>()(
         if (!trit) return null;
         
         const client = state.clients.find(c => c.id === br.clientId);
-        if (!client || client.transactionType !== 'facon') return null;
+        if (!client) return null;
         
         const montantHT = br.poidsNet * data.prixUnitaire;
         const montantTVA = montantHT * (data.tauxTVA / 100);
@@ -652,15 +641,9 @@ export const useAppStore = create<AppState>()(
           let montant: number;
           let prixUtilise: number;
           
-          if (br.nature === 'service') {
-            // Service: based on weight (kg) - client pays mill
-            prixUtilise = data.prixUnitaire;
-            montant = br.poidsNet * prixUtilise;
-          } else {
-            // Bawaz: use predefined price from trituration - mill pays client
-            prixUtilise = trituration.prixHuileKg || data.prixUnitaire;
-            montant = trituration.quantiteHuile * prixUtilise;
-          }
+          // Bawaz: use predefined price from trituration - mill pays client
+          prixUtilise = trituration.prixHuileKg || data.prixUnitaire;
+          montant = trituration.quantiteHuile * prixUtilise;
           
           brList.push({
             brId,
@@ -677,11 +660,11 @@ export const useAppStore = create<AppState>()(
         
         const totalMontant = brList.reduce((sum, line) => sum + line.montant, 0);
         
-        // Determine cash flow type based on BR nature
-        const cashFlowType = brNature === 'service' ? 'entrant' : 'sortant';
+        // Cash flow is always 'sortant' now (mill pays client)
+        const cashFlowType = 'sortant';
         
         // Generate receipt number with prefix based on cash flow
-        const prefix = cashFlowType === 'entrant' ? 'REC-E' : 'REC-S';
+        const prefix = 'REC-S';
         const count = state.paymentReceipts.filter(r => r.cashFlowType === cashFlowType).length;
         const number = `${prefix}${String(count + 1).padStart(4, '0')}`;
         
@@ -690,7 +673,7 @@ export const useAppStore = create<AppState>()(
           number,
           date: data.date,
           clientId: data.clientId,
-          nature: brNature,
+          nature: 'bawaz',
           cashFlowType,
           lines: brList,
           totalMontant,

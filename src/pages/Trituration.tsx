@@ -102,6 +102,7 @@ const Trituration = () => {
     }
 
     addTrituration({
+      type: 'br',
       brId: selectedBR.id,
       date: new Date(formData.date),
       numeroLot: formData.numeroLot || undefined,
@@ -201,18 +202,9 @@ const Trituration = () => {
       render: (br: BonReception) => <span className="font-medium">{br.number}</span>,
     },
     {
-      key: 'nature',
-      header: t('Nature', 'النوع'),
-      render: (br: BonReception) => (
-        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-          br.nature === 'service' 
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-            : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-        }`}>
-          {br.nature === 'service' ? '💰' : '💸'}
-          {br.nature === 'service' ? t('Service', 'خدمة') : t('Bawaz', 'باواز')}
-        </span>
-      ),
+      key: 'client',
+      header: t('Client', 'الحريف'),
+      render: (br: BonReception) => getClient(br.clientId)?.name || '-',
     },
     {
       key: 'client',

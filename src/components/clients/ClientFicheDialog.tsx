@@ -250,7 +250,7 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Type</p>
-              <p className="font-medium text-primary">{clientTypeLabels[client.clientType] || clientTypeLabels[client.transactionType] || client.clientType}</p>
+              <p className="font-medium text-primary">Client Détail</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Téléphone</p>

@@ -1,11 +1,5 @@
-// Client Détail (Trituration) - Agriculteur ou Bawaz
-export type ClientDetailType = 'agriculteur' | 'bawaz';
-
 // Client Gros (Vente en Gros) - Grossiste, Exportateur, Société, Autre
 export type ClientGrosType = 'grossiste' | 'exportateur' | 'societe' | 'autre';
-
-// Legacy support - maps to new types
-export type TransactionType = 'facon' | 'bawaza' | 'achat_base';
 
 export type ClientOperationType = 'capital_fdr' | 'avance' | 'br_reception';
 
@@ -43,8 +37,6 @@ export interface Client {
   id: string;
   code: string;
   name: string;
-  clientType: ClientDetailType;
-  transactionType: TransactionType; // Legacy - derived from clientType
   phone?: string;
   cin?: string; // CIN / Matricule (optional)
   ville?: string; // Ville / Délégation
@@ -69,8 +61,8 @@ export interface ClientGros {
 
 export type BRStatus = 'open' | 'closed';
 
-// Nature du BR: Service (S) = client paie l'huilerie, Bawaz (B) = huilerie paie le client
-export type BRNature = 'service' | 'bawaz';
+// Nature du BR: toujours 'bawaz' maintenant (un seul type client)
+export type BRNature = 'bawaz';
 
 export interface BonReception {
   id: string;
@@ -88,14 +80,19 @@ export interface BonReception {
   createdAt: Date;
 }
 
+// Type de trituration: via BR ou directe (sans BR)
+export type TriturationType = 'br' | 'direct';
+
 export interface Trituration {
   id: string;
-  brId: string;
+  type: TriturationType;
+  brId?: string; // Optionnel pour les triturations directes
   br?: BonReception;
+  clientId?: string; // Pour les triturations directes
   date: Date;
   numeroLot?: string;
   quantiteHuile: number;
-  prixHuileKg?: number; // Prix par kg d'huile pour les BR bawaz (défini lors de l'affectation stock)
+  prixHuileKg?: number; // Prix d'achat par kg d'huile (défini lors de la trituration directe ou affectation stock)
   observations?: string;
   createdAt: Date;
 }

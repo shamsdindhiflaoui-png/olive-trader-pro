@@ -256,8 +256,7 @@ const paymentModeLabels: Record<PaymentMode, string> = {
 };
 
 const natureLabels: Record<BRNature, string> = {
-  service: 'Service (Trituration)',
-  bawaz: 'Bawaz',
+  bawaz: 'Achat Huile',
 };
 
 const cashFlowLabels: Record<CashFlowType, string> = {
@@ -339,9 +338,7 @@ export const PaymentReceiptPDF = ({ receipt, client, settings }: PaymentReceiptP
         <View style={styles.tableHeader}>
           <Text style={styles.colBR}>N° BR</Text>
           <Text style={styles.colDate}>Date BR</Text>
-          <Text style={styles.colQty}>
-            {receipt.nature === 'service' ? 'Poids (kg)' : 'Huile (L)'}
-          </Text>
+          <Text style={styles.colQty}>Huile (kg)</Text>
           <Text style={styles.colPrice}>P.U. (DT)</Text>
           <Text style={styles.colTotal}>Montant (DT)</Text>
         </View>
@@ -352,10 +349,7 @@ export const PaymentReceiptPDF = ({ receipt, client, settings }: PaymentReceiptP
               {format(new Date(line.brDate), 'dd/MM/yyyy', { locale: fr })}
             </Text>
             <Text style={styles.colQty}>
-              {receipt.nature === 'service' 
-                ? line.poidsNet.toLocaleString()
-                : line.quantiteHuile.toLocaleString()
-              }
+              {line.quantiteHuile.toLocaleString()}
             </Text>
             <Text style={styles.colPrice}>{line.prixUnitaire.toFixed(3)}</Text>
             <Text style={styles.colTotal}>{line.montant.toFixed(3)}</Text>

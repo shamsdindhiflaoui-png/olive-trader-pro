@@ -107,12 +107,11 @@ const Stock = () => {
     return acc;
   }, {} as Record<string, Trituration>);
 
-  // Get BRs pending stock affectation (only Bawaza and Achat à la base)
+  // Get BRs pending stock affectation
   const pendingAffectations = closedBRs
     .filter(br => {
       const client = clients.find(c => c.id === br.clientId);
       if (!client) return false;
-      if (client.transactionType === 'facon') return false;
       
       const affectations = stockAffectations.filter(a => a.brId === br.id);
       const totalAffected = affectations.reduce((sum, a) => sum + a.quantite, 0);
@@ -708,7 +707,7 @@ const Stock = () => {
                       <div className="flex items-center justify-between">
                         <CardTitle className="font-serif text-lg">{br.number}</CardTitle>
                         <span className="text-xs px-2 py-1 rounded-full bg-secondary text-secondary-foreground">
-                          {transactionTypeLabels[client.transactionType]}
+                          {t('Achat Huile', 'شراء زيت')}
                         </span>
                       </div>
                     </CardHeader>

@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { useAppStore } from '@/store/appStore';
 import { useLanguageStore } from '@/store/languageStore';
-import { Client, ClientGros, ClientDetailType, ClientGrosType } from '@/types';
+import { Client, ClientGros, ClientGrosType } from '@/types';
 import { Plus, Pencil, Trash2, FileText, Users, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ClientFicheDialog } from '@/components/clients/ClientFicheDialog';
@@ -48,7 +48,6 @@ const Clients = () => {
   const [ficheClient, setFicheClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState({
     name: '',
-    clientType: 'agriculteur' as ClientDetailType,
     phone: '',
     cin: '',
     ville: '',
@@ -70,11 +69,6 @@ const Clients = () => {
     observations: '',
   });
 
-  const clientDetailTypeLabels: Record<ClientDetailType, string> = {
-    agriculteur: t('Agriculteur', 'فلاح'),
-    bawaz: t('Bawaz', 'باواز'),
-  };
-
   const clientGrosTypeLabels: Record<ClientGrosType, string> = {
     grossiste: t('Grossiste', 'تاجر جملة'),
     exportateur: t('Exportateur', 'مصدّر'),
@@ -82,11 +76,9 @@ const Clients = () => {
     autre: t('Autre', 'آخر'),
   };
 
-  // ===== Client Détail Functions =====
   const resetForm = () => {
     setFormData({
       name: '',
-      clientType: 'agriculteur',
       phone: '',
       cin: '',
       ville: '',
@@ -119,7 +111,6 @@ const Clients = () => {
     setEditingClient(client);
     setFormData({
       name: client.name,
-      clientType: client.clientType,
       phone: client.phone || '',
       cin: client.cin || '',
       ville: client.ville || '',
@@ -246,15 +237,6 @@ const Clients = () => {
       )
     },
     { key: 'name', header: t('Nom / Raison sociale', 'الاسم') },
-    { 
-      key: 'clientType', 
-      header: t('Type Client', 'نوع الحريف'),
-      render: (client: Client) => (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-secondary text-secondary-foreground">
-          {clientDetailTypeLabels[client.clientType]}
-        </span>
-      )
-    },
     { key: 'ville', header: t('Ville', 'المدينة') },
     { 
       key: 'capitalDT', 
@@ -418,24 +400,6 @@ const Clients = () => {
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       placeholder={t('Entrez le nom du client', 'أدخل اسم الحريف')}
                     />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="clientType">{t('Type Client *', 'نوع الحريف *')}</Label>
-                    <Select
-                      value={formData.clientType}
-                      onValueChange={(value: ClientDetailType) => 
-                        setFormData({ ...formData, clientType: value })
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="agriculteur">{t('Agriculteur', 'فلاح')}</SelectItem>
-                        <SelectItem value="bawaz">{t('Bawaz', 'باواز')}</SelectItem>
-                      </SelectContent>
-                    </Select>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">

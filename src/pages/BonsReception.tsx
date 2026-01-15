@@ -34,11 +34,6 @@ import { BREtiquettePDF } from '@/components/pdf/BREtiquettePDF';
 import { pdf } from '@react-pdf/renderer';
 import QRCode from 'qrcode';
 
-const natureLabels = {
-  service: { fr: 'Service', ar: 'خدمة' },
-  bawaz: { fr: 'Bawaz', ar: 'باواز' },
-};
-
 const BonsReception = () => {
   const { clients, bonsReception, addBR, settings } = useAppStore();
   const { t, language } = useLanguageStore();
@@ -49,7 +44,6 @@ const BonsReception = () => {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     clientId: '',
-    nature: 'service' as BRNature,
     poidsPlein: '',
     poidsVide: '',
     vehicle: '',
@@ -60,7 +54,6 @@ const BonsReception = () => {
     setFormData({
       date: new Date().toISOString().split('T')[0],
       clientId: '',
-      nature: 'service',
       poidsPlein: '',
       poidsVide: '',
       vehicle: '',
@@ -134,7 +127,7 @@ const BonsReception = () => {
     const newBR = addBR({
       date: new Date(formData.date),
       clientId: formData.clientId,
-      nature: formData.nature,
+      nature: 'bawaz',
       poidsPlein: Number(formData.poidsPlein),
       poidsVide: Number(formData.poidsVide),
       vehicle: formData.vehicle || undefined,
@@ -147,8 +140,7 @@ const BonsReception = () => {
     // Download etiquette automatically
     await downloadEtiquette(newBR, clientName);
 
-    const natureLabel = formData.nature === 'service' ? 'Service' : 'Bawaz';
-    toast.success(t(`BR ${natureLabel} créé avec succès`, `تم إنشاء وصل ${formData.nature === 'service' ? 'الخدمة' : 'الباواز'} بنجاح`));
+    toast.success(t('BR créé avec succès', 'تم إنشاء الوصل بنجاح'));
     setIsDialogOpen(false);
     resetForm();
   };
@@ -159,20 +151,6 @@ const BonsReception = () => {
       header: t('N° BR', 'رقم الوصل'),
       render: (br: BonReception) => (
         <span className="font-medium text-primary">{br.number}</span>
-      )
-    },
-    { 
-      key: 'nature', 
-      header: t('Nature', 'النوع'),
-      render: (br: BonReception) => (
-        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-          br.nature === 'service' 
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-            : 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
-        }`}>
-        {br.nature === 'service' ? '💰 ' : '💸 '}
-          {language === 'ar' ? natureLabels[br.nature || 'bawaz'].ar : natureLabels[br.nature || 'bawaz'].fr}
-        </span>
       )
     },
     { 
@@ -268,35 +246,7 @@ const BonsReception = () => {
               <DialogHeader>
                 <DialogTitle className="font-serif">{t('Nouveau Bon de Réception', 'وصل استلام جديد')}</DialogTitle>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Nature Selection */}
-                <div className="space-y-2">
-                  <Label>{t('Nature de Transaction *', 'نوع المعاملة *')}</Label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant={formData.nature === 'service' ? 'default' : 'outline'}
-                      className={formData.nature === 'service' ? 'bg-green-600 hover:bg-green-700' : ''}
-                      onClick={() => setFormData({ ...formData, nature: 'service' })}
-                    >
-                      💰 {t('Service', 'خدمة')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={formData.nature === 'bawaz' ? 'default' : 'outline'}
-                      className={formData.nature === 'bawaz' ? 'bg-orange-500 hover:bg-orange-600' : ''}
-                      onClick={() => setFormData({ ...formData, nature: 'bawaz' })}
-                    >
-                      💸 {t('Bawaz', 'باواز')}
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    {formData.nature === 'service' 
-                      ? t('Service: Le client paie l\'huilerie (flux entrant)', 'خدمة: يدفع الحريف للمعصرة (تدفق وارد)')
-                      : t('Bawaz: L\'huilerie paie le client (flux sortant)', 'باواز: تدفع المعصرة للحريف (تدفق صادر)')
-                    }
-                  </p>
-                </div>
+                <form onSubmit={handleSubmit} className="space-y-4">
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
@@ -399,9 +349,6 @@ const BonsReception = () => {
                             <div className="border border-foreground p-1 text-center min-w-[70px]">
                               <span className="text-[8px] block">Poids Net</span>
                               <span className="font-bold text-sm">{poidsNet.toLocaleString('fr-FR', { minimumFractionDigits: 3, maximumFractionDigits: 3 })}</span>
-                              <span className="text-[8px] border border-foreground px-1 block mt-0.5">
-                                {formData.nature === 'service' ? 'Svc' : 'Bwz'}
-                              </span>
                             </div>
                           </div>
                           <div className="w-8 h-8 border border-foreground flex items-center justify-center text-[6px]">
@@ -454,22 +401,19 @@ const BonsReception = () => {
             const client = clients.find(c => c.id === viewingBR.clientId);
             return (
               <div className="space-y-4">
-                {/* Nature Badge */}
-                <div className={`p-3 rounded-lg ${
-                  viewingBR.nature === 'service' 
-                    ? 'bg-green-100 dark:bg-green-900/30' 
-                    : 'bg-orange-100 dark:bg-orange-900/30'
-                }`}>
-                  <p className="font-medium flex items-center gap-2">
-                    {viewingBR.nature === 'service' ? '💰' : '💸'}
-                    {viewingBR.nature === 'service' 
-                      ? t('Service - Flux Entrant', 'خدمة - تدفق وارد')
-                      : t('Bawaz - Flux Sortant', 'باواز - تدفق صادر')
-                    }
-                  </p>
-                </div>
-                
                 <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">{t('Date', 'التاريخ')}</p>
+                    <p className="font-medium">{format(new Date(viewingBR.date), 'dd MMMM yyyy', { locale: dateLocale })}</p>
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">{t('Statut', 'الحالة')}</p>
+                    <StatusBadge status={viewingBR.status} />
+                  </div>
+                  <div>
+                    <p className="text-muted-foreground">{t('Client', 'الحريف')}</p>
+                    <p className="font-medium">{client?.name}</p>
+                  </div>
                   <div>
                     <p className="text-muted-foreground">{t('Date', 'التاريخ')}</p>
                     <p className="font-medium">{format(new Date(viewingBR.date), 'dd MMMM yyyy', { locale: dateLocale })}</p>
