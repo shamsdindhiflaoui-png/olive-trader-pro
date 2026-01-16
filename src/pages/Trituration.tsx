@@ -27,7 +27,7 @@ import {
 import { useAppStore } from '@/store/appStore';
 import { useLanguageStore } from '@/store/languageStore';
 import { BonReception, Trituration as TriturationT } from '@/types';
-import { Factory, Droplets, Scale, Calendar, Filter, Search, User } from 'lucide-react';
+import { Factory, Droplets, Scale, Calendar, Filter, Search, User, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { format, isWithinInterval, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
@@ -39,12 +39,23 @@ const Trituration = () => {
   const dateLocale = language === 'ar' ? ar : fr;
   const { clients, bonsReception, triturations, addTrituration, settings } = useAppStore();
   const [selectedBR, setSelectedBR] = useState<BonReception | null>(null);
+  const [showDirectDialog, setShowDirectDialog] = useState(false);
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     numeroLot: '',
     quantiteHuile: '',
     observations: '',
   });
+  const [directFormData, setDirectFormData] = useState({
+    date: new Date().toISOString().split('T')[0],
+    clientId: '',
+    numeroLot: '',
+    quantiteHuile: '',
+    prixHuileKg: '',
+    observations: '',
+  });
+
+  // Tous les clients (Détail) sont disponibles pour la trituration directe
 
   // Filtres pour l'historique
   const [dateDebut, setDateDebut] = useState('');
@@ -91,6 +102,17 @@ const Trituration = () => {
     });
   };
 
+  const resetDirectForm = () => {
+    setDirectFormData({
+      date: new Date().toISOString().split('T')[0],
+      clientId: '',
+      numeroLot: '',
+      quantiteHuile: '',
+      prixHuileKg: '',
+      observations: '',
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -115,6 +137,48 @@ const Trituration = () => {
     resetForm();
   };
 
+  const handleDirectSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!directFormData.clientId) {
+      toast.error(t('Veuillez sélectionner un client', 'يرجى اختيار حريف'));
+      return;
+    }
+
+    if (!directFormData.quantiteHuile || Number(directFormData.quantiteHuile) <= 0) {
+      toast.error(t("La quantité d'huile est obligatoire", "كمية الزيت إجبارية"));
+      return;
+    }
+
+    if (!directFormData.numeroLot.trim()) {
+      toast.error(t('Le N° de lot est obligatoire', 'رقم الدفعة إجباري'));
+      return;
+    }
+
+    if (!directFormData.prixHuileKg || Number(directFormData.prixHuileKg) <= 0) {
+      toast.error(t("Le prix d'achat au kg est obligatoire", "سعر الشراء للكغ إجباري"));
+      return;
+    }
+
+    addTrituration({
+      type: 'direct',
+      clientId: directFormData.clientId,
+      date: new Date(directFormData.date),
+      numeroLot: directFormData.numeroLot,
+      quantiteHuile: Number(directFormData.quantiteHuile),
+      prixHuileKg: Number(directFormData.prixHuileKg),
+      observations: directFormData.observations || undefined,
+    });
+
+    const client = clients.find(c => c.id === directFormData.clientId);
+    toast.success(t(
+      `Trituration directe enregistrée: ${directFormData.quantiteHuile} kg à ${directFormData.prixHuileKg} DT/kg`,
+      `تم تسجيل العصر المباشر: ${directFormData.quantiteHuile} كغ بـ ${directFormData.prixHuileKg} د.ت/كغ`
+    ));
+    setShowDirectDialog(false);
+    resetDirectForm();
+  };
+
   const getClient = (clientId: string) => clients.find(c => c.id === clientId);
   const getBR = (brId: string) => bonsReception.find(br => br.id === brId);
 
@@ -122,9 +186,10 @@ const Trituration = () => {
   const filteredTriturations = useMemo(() => {
     let result = triturations;
     
-    // Filtre par numéro BR
+    // Filtre par numéro BR (exclut les triturations directes du filtre BR)
     if (searchBR.trim()) {
       result = result.filter(trit => {
+        if (!trit.brId) return false;
         const br = getBR(trit.brId);
         return br?.number.toLowerCase().includes(searchBR.toLowerCase());
       });
@@ -161,19 +226,30 @@ const Trituration = () => {
 
   // Statistiques filtrées
   const stats = useMemo(() => {
+    // Olives uniquement pour les triturations avec BR
     const totalOlivesKg = filteredTriturations.reduce((sum, trit) => {
+      if (trit.type === 'direct' || !trit.brId) return sum;
       const br = getBR(trit.brId);
       return sum + (br?.poidsNet || 0);
     }, 0);
 
-    const totalHuileLitres = filteredTriturations.reduce((sum, trit) => sum + trit.quantiteHuile, 0);
-    const rendementMoyen = totalOlivesKg > 0 ? (totalHuileLitres / totalOlivesKg) * 100 : 0;
+    const totalHuileKg = filteredTriturations.reduce((sum, trit) => sum + trit.quantiteHuile, 0);
+    
+    // Rendement moyen basé uniquement sur les triturations avec BR
+    const tritsWithBR = filteredTriturations.filter(t => t.type === 'br' && t.brId);
+    const olivesWithBR = tritsWithBR.reduce((sum, trit) => {
+      const br = getBR(trit.brId!);
+      return sum + (br?.poidsNet || 0);
+    }, 0);
+    const huileWithBR = tritsWithBR.reduce((sum, trit) => sum + trit.quantiteHuile, 0);
+    const rendementMoyen = olivesWithBR > 0 ? (huileWithBR / olivesWithBR) * 100 : 0;
 
     return {
       totalOlivesKg,
-      totalHuileLitres,
+      totalHuileKg,
       rendementMoyen,
       nombreTriturations: filteredTriturations.length,
+      nombreDirectes: filteredTriturations.filter(t => t.type === 'direct').length,
     };
   }, [filteredTriturations, bonsReception]);
 
@@ -242,9 +318,19 @@ const Trituration = () => {
       render: (trit: TriturationT) => format(new Date(trit.date), 'dd/MM/yyyy', { locale: dateLocale }),
     },
     {
+      key: 'type',
+      header: t('Type', 'النوع'),
+      render: (trit: TriturationT) => (
+        <StatusBadge 
+          status={trit.type === 'direct' ? 'direct' : 'br'} 
+          label={trit.type === 'direct' ? t('Direct', 'مباشر') : t('BR', 'وصل')} 
+        />
+      ),
+    },
+    {
       key: 'brNumber',
       header: t('N° BR', 'رقم الوصل'),
-      render: (trit: TriturationT) => getBR(trit.brId)?.number || '-',
+      render: (trit: TriturationT) => trit.brId ? (getBR(trit.brId)?.number || '-') : '-',
     },
     {
       key: 'numeroLot',
@@ -255,7 +341,10 @@ const Trituration = () => {
       key: 'client',
       header: t('Client', 'الحريف'),
       render: (trit: TriturationT) => {
-        const br = getBR(trit.brId);
+        if (trit.type === 'direct' && trit.clientId) {
+          return getClient(trit.clientId)?.name || '-';
+        }
+        const br = trit.brId ? getBR(trit.brId) : null;
         return br ? getClient(br.clientId)?.name || '-' : '-';
       },
     },
@@ -263,7 +352,8 @@ const Trituration = () => {
       key: 'poidsNet',
       header: t('Olives (kg)', 'الزيتون'),
       render: (trit: TriturationT) => {
-        const br = getBR(trit.brId);
+        if (trit.type === 'direct') return '-';
+        const br = trit.brId ? getBR(trit.brId) : null;
         return br ? `${br.poidsNet.toLocaleString()} kg` : '-';
       },
       className: 'text-right font-medium',
@@ -275,10 +365,17 @@ const Trituration = () => {
       className: 'text-right font-semibold text-primary',
     },
     {
+      key: 'prixHuileKg',
+      header: t('Prix (DT/kg)', 'السعر'),
+      render: (trit: TriturationT) => trit.prixHuileKg ? `${trit.prixHuileKg.toFixed(3)} DT` : '-',
+      className: 'text-right',
+    },
+    {
       key: 'rendement',
       header: t('Rendement', 'المردود'),
       render: (trit: TriturationT) => {
-        const br = getBR(trit.brId);
+        if (trit.type === 'direct') return '-';
+        const br = trit.brId ? getBR(trit.brId) : null;
         if (!br || br.poidsNet === 0) return '-';
         const rendement = (trit.quantiteHuile / br.poidsNet) * 100;
         return `${rendement.toFixed(1)}%`;
@@ -292,6 +389,12 @@ const Trituration = () => {
       <PageHeader 
         title={t('Trituration', 'العصر')} 
         description={t("Transformez les olives en huile et suivez l'historique", 'حول الزيتون إلى زيت وتابع السجل')}
+        action={
+          <Button onClick={() => setShowDirectDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t('Trituration directe', 'عصر مباشر')}
+          </Button>
+        }
       />
 
       <Tabs defaultValue="en-cours" className="space-y-6">
@@ -469,7 +572,7 @@ const Trituration = () => {
             />
             <StatCard
               title={t('Huile obtenue', 'الزيت المنتج')}
-              value={`${stats.totalHuileLitres.toLocaleString()} kg`}
+              value={`${stats.totalHuileKg.toLocaleString()} kg`}
               icon={Droplets}
               subtitle={dateDebut || dateFin ? t('Période filtrée', 'فترة محددة') : t('Total', 'الإجمالي')}
             />
@@ -591,6 +694,112 @@ const Trituration = () => {
               </div>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Trituration Directe Dialog */}
+      <Dialog open={showDirectDialog} onOpenChange={(open) => { setShowDirectDialog(open); if (!open) resetDirectForm(); }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-serif">
+              {t('Trituration directe', 'العصر المباشر')}
+            </DialogTitle>
+            <DialogDescription>
+              {t("Enregistrez un achat d'huile sans bon de réception.", "سجل شراء زيت بدون وصل استلام.")}
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleDirectSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="directDate">{t('Date *', 'التاريخ *')}</Label>
+              <Input
+                id="directDate"
+                type="date"
+                value={directFormData.date}
+                onChange={(e) => setDirectFormData({ ...directFormData, date: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="directClient">{t('Client *', 'الحريف *')}</Label>
+              <Select 
+                value={directFormData.clientId} 
+                onValueChange={(value) => setDirectFormData({ ...directFormData, clientId: value })}
+              >
+                <SelectTrigger>
+                  <User className="mr-2 h-4 w-4 text-muted-foreground" />
+                  <SelectValue placeholder={t('Sélectionner un client', 'اختر حريف')} />
+                </SelectTrigger>
+                <SelectContent>
+                  {clients.map(client => (
+                    <SelectItem key={client.id} value={client.id}>
+                      {client.name} ({client.code})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="directNumeroLot">{t('N° Lot *', 'رقم الدفعة *')}</Label>
+              <Input
+                id="directNumeroLot"
+                type="text"
+                value={directFormData.numeroLot}
+                onChange={(e) => setDirectFormData({ ...directFormData, numeroLot: e.target.value })}
+                placeholder="Ex: LOT001"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="directQuantiteHuile">{t("Quantité d'huile (kg) *", "كمية الزيت (كغ) *")}</Label>
+              <Input
+                id="directQuantiteHuile"
+                type="number"
+                value={directFormData.quantiteHuile}
+                onChange={(e) => setDirectFormData({ ...directFormData, quantiteHuile: e.target.value })}
+                placeholder="Ex: 150"
+                step="0.1"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="directPrixHuileKg">{t("Prix d'achat (DT/kg) *", "سعر الشراء (د.ت/كغ) *")}</Label>
+              <Input
+                id="directPrixHuileKg"
+                type="number"
+                value={directFormData.prixHuileKg}
+                onChange={(e) => setDirectFormData({ ...directFormData, prixHuileKg: e.target.value })}
+                placeholder="Ex: 15.500"
+                step="0.001"
+              />
+              {directFormData.quantiteHuile && directFormData.prixHuileKg && (
+                <p className="text-sm text-muted-foreground">
+                  {t('Montant total', 'المبلغ الإجمالي')}: {(Number(directFormData.quantiteHuile) * Number(directFormData.prixHuileKg)).toFixed(3)} DT
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="directObservations">{t('Observations', 'ملاحظات')}</Label>
+              <Textarea
+                id="directObservations"
+                value={directFormData.observations}
+                onChange={(e) => setDirectFormData({ ...directFormData, observations: e.target.value })}
+                placeholder={t('Notes...', 'ملاحظات...')}
+                rows={2}
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" onClick={() => setShowDirectDialog(false)}>
+                {t('Annuler', 'إلغاء')}
+              </Button>
+              <Button type="submit">
+                <Droplets className="mr-2 h-4 w-4" />
+                {t('Enregistrer', 'تسجيل')}
+              </Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
     </MainLayout>
