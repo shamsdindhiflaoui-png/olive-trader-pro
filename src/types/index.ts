@@ -109,9 +109,13 @@ export interface Reservoir {
   createdAt: Date;
 }
 
+export type StockAffectationSource = 'br' | 'direct';
+
 export interface StockAffectation {
   id: string;
-  brId: string;
+  source: StockAffectationSource;
+  brId?: string; // For BR-based triturations
+  triturationId?: string; // For direct triturations
   reservoirId: string;
   quantite: number;
   date: Date;

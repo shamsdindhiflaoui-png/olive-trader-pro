@@ -47,8 +47,9 @@ interface AppState {
   // Reservoir actions
   addReservoir: (reservoir: Omit<Reservoir, 'id' | 'createdAt'>) => void;
   updateReservoir: (id: string, reservoir: Partial<Reservoir>) => void;
-  affectToReservoir: (reservoirId: string, quantity: number, brId: string) => boolean;
+  affectToReservoir: (reservoirId: string, quantity: number, sourceId: string, sourceType: 'br' | 'direct') => boolean;
   transferBetweenReservoirs: (fromId: string, toId: string, quantity: number) => boolean;
+  updateTriturationById: (triturationId: string, data: Partial<Trituration>) => void;
   
   // Sales actions
   addSale: (sale: { clientId: string; reservoirId: string; quantite: number; prixUnitaire: number; tauxTVA: number; droitTimbre: number; date: Date }) => BonLivraison | null;
@@ -253,6 +254,12 @@ export const useAppStore = create<AppState>()(
           t.brId === brId ? { ...t, ...data } : t
         )
       })),
+
+      updateTriturationById: (triturationId, data) => set((state) => ({
+        triturations: state.triturations.map(t => 
+          t.id === triturationId ? { ...t, ...data } : t
+        )
+      })),
       
       // Reservoir actions
       addReservoir: (reservoirData) => set((state) => ({
@@ -269,7 +276,7 @@ export const useAppStore = create<AppState>()(
         )
       })),
       
-      affectToReservoir: (reservoirId, quantity, brId) => {
+      affectToReservoir: (reservoirId, quantity, sourceId, sourceType) => {
         const state = get();
         const reservoir = state.reservoirs.find(r => r.id === reservoirId);
         if (!reservoir) return false;
@@ -277,7 +284,15 @@ export const useAppStore = create<AppState>()(
         const newQuantity = reservoir.quantiteActuelle + quantity;
         if (newQuantity > reservoir.capaciteMax) return false;
         
-        const br = state.bonsReception.find(b => b.id === brId);
+        // Get reference for stock movement
+        let reference: string | undefined;
+        if (sourceType === 'br') {
+          const br = state.bonsReception.find(b => b.id === sourceId);
+          reference = br?.number;
+        } else {
+          const trit = state.triturations.find(t => t.id === sourceId);
+          reference = trit?.numeroLot ? `LOT-${trit.numeroLot}` : `DIRECT-${sourceId.substring(0, 6)}`;
+        }
         
         set((state) => ({
           reservoirs: state.reservoirs.map(r => 
@@ -291,7 +306,9 @@ export const useAppStore = create<AppState>()(
           ),
           stockAffectations: [...state.stockAffectations, {
             id: generateId(),
-            brId,
+            source: sourceType,
+            brId: sourceType === 'br' ? sourceId : undefined,
+            triturationId: sourceType === 'direct' ? sourceId : undefined,
             reservoirId,
             quantite: quantity,
             date: new Date(),
@@ -302,7 +319,7 @@ export const useAppStore = create<AppState>()(
             type: 'entree',
             quantite: quantity,
             date: new Date(),
-            reference: br?.number,
+            reference,
             createdAt: new Date(),
           }]
         }));
