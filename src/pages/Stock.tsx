@@ -68,8 +68,8 @@ const Stock = () => {
     addReservoir, 
     affectToReservoir,
     transferBetweenReservoirs,
-    
     updateTrituration,
+    updateTriturationById,
   } = useAppStore();
   
   const [isReservoirDialogOpen, setIsReservoirDialogOpen] = useState(false);
@@ -78,6 +78,13 @@ const Stock = () => {
   
   const [isReservoirDetailDialogOpen, setIsReservoirDetailDialogOpen] = useState(false);
   const [selectedReservoirDetail, setSelectedReservoirDetail] = useState<Reservoir | null>(null);
+  
+  // Track selected item for affectation - can be BR-based or direct trituration
+  type PendingItem = 
+    | { type: 'br'; br: BonReception; trit: Trituration; client: { id: string; name: string } }
+    | { type: 'direct'; trit: Trituration; client: { id: string; name: string } };
+  
+  const [selectedItem, setSelectedItem] = useState<PendingItem | null>(null);
   const [selectedTrit, setSelectedTrit] = useState<{ br: BonReception; trit: Trituration } | null>(null);
   const [selectedReservoir, setSelectedReservoir] = useState<string>('all');
   const [dateDebut, setDateDebut] = useState('');
@@ -103,12 +110,12 @@ const Stock = () => {
   // Get closed BRs that haven't been fully affected to stock
   const closedBRs = bonsReception.filter(br => br.status === 'closed');
   const tritsByBR = triturations.reduce((acc, t) => {
-    acc[t.brId] = t;
+    if (t.brId) acc[t.brId] = t;
     return acc;
   }, {} as Record<string, Trituration>);
 
-  // Get BRs pending stock affectation
-  const pendingAffectations = closedBRs
+  // Get BR-based pending affectations
+  const pendingBRAffectations = closedBRs
     .filter(br => {
       const client = clients.find(c => c.id === br.clientId);
       if (!client) return false;
@@ -118,16 +125,35 @@ const Stock = () => {
       const trit = tritsByBR[br.id];
       if (!trit) return false;
       
-      // Bawaza clients sell 100% of oil to the mill
       const targetQuantity = trit.quantiteHuile;
-      
       return totalAffected < targetQuantity;
     })
     .map(br => ({
+      type: 'br' as const,
       br,
       trit: tritsByBR[br.id],
       client: clients.find(c => c.id === br.clientId)!,
     }));
+
+  // Get direct triturations pending affectation
+  const directTriturations = triturations.filter(t => t.type === 'direct');
+  const pendingDirectAffectations = directTriturations
+    .filter(trit => {
+      const client = trit.clientId ? clients.find(c => c.id === trit.clientId) : null;
+      if (!client) return false;
+      
+      const affectations = stockAffectations.filter(a => a.triturationId === trit.id);
+      const totalAffected = affectations.reduce((sum, a) => sum + a.quantite, 0);
+      return totalAffected < trit.quantiteHuile;
+    })
+    .map(trit => ({
+      type: 'direct' as const,
+      trit,
+      client: clients.find(c => c.id === trit.clientId)!,
+    }));
+
+  // Combined pending affectations
+  const pendingAffectations: PendingItem[] = [...pendingBRAffectations, ...pendingDirectAffectations];
 
   // Filter movements
   const filteredMovements = useMemo(() => {
@@ -188,15 +214,15 @@ const Stock = () => {
   const handleAffect = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!selectedTrit || !affectForm.reservoirId || !affectForm.quantite) {
+    if (!selectedItem || !affectForm.reservoirId || !affectForm.quantite) {
       toast.error(t('Veuillez remplir tous les champs', 'يرجى ملء جميع الحقول'));
       return;
     }
 
-    // Check if bawaz BR requires price
-    const isBawaz = selectedTrit.br.nature === 'bawaz';
-    if (isBawaz && !affectForm.prixHuileKg) {
-      toast.error(t('Le prix par kg est obligatoire pour les BR Bawaz', 'سعر الكيلوغرام إجباري لوصولات الباواز'));
+    // For BR-based or direct: price is already set in direct triturations
+    const needsPrice = selectedItem.type === 'br' && !selectedItem.trit.prixHuileKg;
+    if (needsPrice && !affectForm.prixHuileKg) {
+      toast.error(t('Le prix par kg est obligatoire', 'سعر الكيلوغرام إجباري'));
       return;
     }
 
@@ -218,12 +244,15 @@ const Stock = () => {
       return;
     }
 
-    // Calculate remaining quantity to affect for this BR
-    const client = clients.find(c => c.id === selectedTrit.br.clientId);
-    const existingAffectations = stockAffectations.filter(a => a.brId === selectedTrit.br.id);
+    // Calculate remaining quantity to affect
+    let existingAffectations;
+    if (selectedItem.type === 'br') {
+      existingAffectations = stockAffectations.filter(a => a.brId === selectedItem.br.id);
+    } else {
+      existingAffectations = stockAffectations.filter(a => a.triturationId === selectedItem.trit.id);
+    }
     const totalDejaAffecte = existingAffectations.reduce((sum, a) => sum + a.quantite, 0);
-    // Bawaza clients sell 100% of oil to the mill
-    const targetQuantity = selectedTrit.trit.quantiteHuile;
+    const targetQuantity = selectedItem.trit.quantiteHuile;
     const resteAAffecterAvant = targetQuantity - totalDejaAffecte;
 
     if (quantity > resteAAffecterAvant) {
@@ -234,12 +263,16 @@ const Stock = () => {
       return;
     }
 
-    const success = affectToReservoir(affectForm.reservoirId, quantity, selectedTrit.br.id);
+    // Determine source ID and type
+    const sourceId = selectedItem.type === 'br' ? selectedItem.br.id : selectedItem.trit.id;
+    const sourceType = selectedItem.type;
+
+    const success = affectToReservoir(affectForm.reservoirId, quantity, sourceId, sourceType);
 
     if (success) {
-      // If bawaz, save the price on trituration (only first time or update)
-      if (isBawaz && affectForm.prixHuileKg) {
-        updateTrituration(selectedTrit.br.id, { prixHuileKg: Number(affectForm.prixHuileKg) });
+      // Save the price on trituration if needed (only for BR-based)
+      if (selectedItem.type === 'br' && affectForm.prixHuileKg && !selectedItem.trit.prixHuileKg) {
+        updateTrituration(selectedItem.br.id, { prixHuileKg: Number(affectForm.prixHuileKg) });
       }
       
       const resteApres = resteAAffecterAvant - quantity;
@@ -249,10 +282,10 @@ const Stock = () => {
           `تم التخصيص بنجاح. المتبقي للتخصيص: ${resteApres.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} كغ`
         ));
       } else {
-        toast.success(t('Affectation complète du BR', 'تم تخصيص الوصل بالكامل'));
+        toast.success(t('Affectation complète', 'تم التخصيص بالكامل'));
       }
       setIsAffectDialogOpen(false);
-      setSelectedTrit(null);
+      setSelectedItem(null);
       setAffectForm({ reservoirId: '', quantite: '', prixHuileKg: '' });
     } else {
       toast.error(t('Erreur lors de l\'affectation', 'خطأ أثناء التخصيص'));
@@ -689,37 +722,47 @@ const Stock = () => {
               </div>
               <h3 className="font-serif text-xl font-semibold mb-2">{t('Aucune affectation en attente', 'لا توجد تخصيصات معلقة')}</h3>
               <p className="text-muted-foreground text-center max-w-md">
-                {t("Les BR de type Façon n'impactent pas le stock. Seuls les BR Bawaza et Achat à la base apparaissent ici.", "وصولات الخدمة لا تؤثر على المخزون")}
+                {t("Les huiles en attente d'affectation apparaissent ici.", "الزيوت المنتظرة للتخصيص تظهر هنا")}
               </p>
             </div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
-              {pendingAffectations.map(({ br, trit, client }) => {
-                const affectations = stockAffectations.filter(a => a.brId === br.id);
+              {pendingAffectations.map((item) => {
+                const key = item.type === 'br' ? item.br.id : item.trit.id;
+                const affectations = item.type === 'br' 
+                  ? stockAffectations.filter(a => a.brId === item.br.id)
+                  : stockAffectations.filter(a => a.triturationId === item.trit.id);
                 const totalAffected = affectations.reduce((sum, a) => sum + a.quantite, 0);
-                // Bawaza clients sell 100% of oil to the mill
-                const targetQuantity = trit.quantiteHuile;
+                const targetQuantity = item.trit.quantiteHuile;
                 const remaining = targetQuantity - totalAffected;
 
                 return (
-                  <Card key={br.id}>
+                  <Card key={key}>
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="font-serif text-lg">{br.number}</CardTitle>
-                        <span className="text-xs px-2 py-1 rounded-full bg-secondary text-secondary-foreground">
-                          {t('Achat Huile', 'شراء زيت')}
+                        <CardTitle className="font-serif text-lg">
+                          {item.type === 'br' ? item.br.number : `LOT-${item.trit.numeroLot || item.trit.id.substring(0, 6)}`}
+                        </CardTitle>
+                        <span className={`text-xs px-2 py-1 rounded-full ${item.type === 'direct' ? 'bg-blue-100 text-blue-800' : 'bg-secondary text-secondary-foreground'}`}>
+                          {item.type === 'direct' ? t('Achat Direct', 'شراء مباشر') : t('Achat Huile', 'شراء زيت')}
                         </span>
                       </div>
                     </CardHeader>
                     <CardContent className="space-y-3">
                       <div className="text-sm">
                         <span className="text-muted-foreground">{t('Client', 'الحريف')}: </span>
-                        <span className="font-medium">{client.name}</span>
+                        <span className="font-medium">{item.client.name}</span>
                       </div>
                       <div className="text-sm">
-                        <span className="text-muted-foreground">{t('Huile produite', 'الزيت المنتج')}: </span>
-                        <span className="font-medium">{trit.quantiteHuile.toLocaleString()} kg</span>
+                        <span className="text-muted-foreground">{t('Huile', 'الزيت')}: </span>
+                        <span className="font-medium">{item.trit.quantiteHuile.toLocaleString()} kg</span>
                       </div>
+                      {item.trit.prixHuileKg && (
+                        <div className="text-sm">
+                          <span className="text-muted-foreground">{t('Prix', 'السعر')}: </span>
+                          <span className="font-medium">{item.trit.prixHuileKg.toFixed(3)} DT/kg</span>
+                        </div>
+                      )}
                       <div className="text-sm">
                         <span className="text-muted-foreground">{t('Reste à affecter', 'المتبقي للتخصيص')}: </span>
                         <span className="font-semibold text-warning">{remaining.toFixed(1)} kg</span>
@@ -741,7 +784,11 @@ const Stock = () => {
                       ) : (
                         <Button 
                           className="w-full mt-2" 
-                          onClick={() => openAffectDialog(br, trit)}
+                          onClick={() => {
+                            setSelectedItem(item);
+                            setIsAffectDialogOpen(true);
+                            setAffectForm({ reservoirId: '', quantite: '', prixHuileKg: item.trit.prixHuileKg?.toString() || '' });
+                          }}
                         >
                           {t('Affecter au stock', 'تخصيص للمخزون')}
                         </Button>
@@ -810,22 +857,23 @@ const Stock = () => {
       </Tabs>
 
       {/* Affectation Dialog */}
-      <Dialog open={isAffectDialogOpen} onOpenChange={() => { setIsAffectDialogOpen(false); setSelectedTrit(null); setAffectForm({ reservoirId: '', quantite: '', prixHuileKg: '' }); }}>
+      <Dialog open={isAffectDialogOpen} onOpenChange={() => { setIsAffectDialogOpen(false); setSelectedItem(null); setAffectForm({ reservoirId: '', quantite: '', prixHuileKg: '' }); }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle className="font-serif">
               Affecter l'huile au stock | تخصيص الزيت للمخزون
             </DialogTitle>
           </DialogHeader>
-          {selectedTrit && (() => {
-            const client = clients.find(c => c.id === selectedTrit.br.clientId);
-            const isBawaz = selectedTrit.br.nature === 'bawaz';
+          {selectedItem && (() => {
+            const isBR = selectedItem.type === 'br';
+            const needsPrice = isBR && !selectedItem.trit.prixHuileKg;
             
             // Calculate remaining quantity to affect
-            const existingAffectations = stockAffectations.filter(a => a.brId === selectedTrit.br.id);
+            const existingAffectations = isBR
+              ? stockAffectations.filter(a => a.brId === selectedItem.br.id)
+              : stockAffectations.filter(a => a.triturationId === selectedItem.trit.id);
             const totalDejaAffecte = existingAffectations.reduce((sum, a) => sum + a.quantite, 0);
-            // Bawaza clients sell 100% of oil to the mill
-            const targetQuantity = selectedTrit.trit.quantiteHuile;
+            const targetQuantity = selectedItem.trit.quantiteHuile;
             const resteAAfffecter = targetQuantity - totalDejaAffecte;
             
             // Get selected reservoir capacity
@@ -837,27 +885,37 @@ const Stock = () => {
               <form onSubmit={handleAffect} className="space-y-4">
                 <div className="p-4 rounded-lg bg-muted space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">BR | الوصل</span>
-                    <span className="font-medium">{selectedTrit.br.number}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Client | الحريف</span>
-                    <span className="font-medium">{client?.name || '-'}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Nature | النوع</span>
-                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${isBawaz ? 'bg-orange-100 text-orange-800' : 'bg-green-100 text-green-800'}`}>
-                      {isBawaz ? '💸 Bawaz' : '💰 Service'}
+                    <span className="text-muted-foreground">{isBR ? 'BR | الوصل' : 'Lot | الدفعة'}</span>
+                    <span className="font-medium">
+                      {isBR ? selectedItem.br.number : `LOT-${selectedItem.trit.numeroLot || selectedItem.trit.id.substring(0, 6)}`}
                     </span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Poids olives | وزن الزيتون</span>
-                    <span className="font-medium">{selectedTrit.br.poidsNet.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} Kg</span>
+                    <span className="text-muted-foreground">Client | الحريف</span>
+                    <span className="font-medium">{selectedItem.client.name}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Huile obtenue | الزيت المتحصل عليه</span>
-                    <span className="font-semibold text-primary">{selectedTrit.trit.quantiteHuile.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg</span>
+                    <span className="text-muted-foreground">Type | النوع</span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${isBR ? 'bg-orange-100 text-orange-800' : 'bg-blue-100 text-blue-800'}`}>
+                      {isBR ? '🫒 BR' : '💧 Direct'}
+                    </span>
                   </div>
+                  {isBR && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Poids olives | وزن الزيتون</span>
+                      <span className="font-medium">{selectedItem.br.poidsNet.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} Kg</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Huile | الزيت</span>
+                    <span className="font-semibold text-primary">{selectedItem.trit.quantiteHuile.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} kg</span>
+                  </div>
+                  {selectedItem.trit.prixHuileKg && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Prix | السعر</span>
+                      <span className="font-medium">{selectedItem.trit.prixHuileKg.toFixed(3)} DT/kg</span>
+                    </div>
+                  )}
                   {totalDejaAffecte > 0 && (
                     <div className="flex justify-between text-sm pt-2 border-t border-border">
                       <span className="text-muted-foreground">Déjà affecté | تم تخصيصه</span>
@@ -924,8 +982,8 @@ const Stock = () => {
                   />
                 </div>
 
-                {/* Prix par kg d'huile - ONLY for Bawaz */}
-                {isBawaz && (
+                {/* Prix par kg d'huile - ONLY when price not already set */}
+                {needsPrice && (
                   <div className="space-y-2 p-3 rounded-lg border-2 border-orange-200 bg-orange-50">
                     <Label className="text-orange-800 font-semibold">
                       💸 Prix par Kg d'huile (DT) * | سعر الكيلوغرام من الزيت *
@@ -955,7 +1013,7 @@ const Stock = () => {
                   <Button type="button" variant="outline" onClick={() => setIsAffectDialogOpen(false)}>
                     Annuler | إلغاء
                   </Button>
-                  <Button type="submit" className={isBawaz ? 'bg-orange-600 hover:bg-orange-700' : ''}>
+                  <Button type="submit" className={isBR ? 'bg-orange-600 hover:bg-orange-700' : ''}>
                     Affecter | تخصيص
                   </Button>
                 </div>
