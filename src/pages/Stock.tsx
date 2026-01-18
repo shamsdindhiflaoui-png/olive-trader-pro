@@ -85,7 +85,6 @@ const Stock = () => {
     | { type: 'direct'; trit: Trituration; client: { id: string; name: string } };
   
   const [selectedItem, setSelectedItem] = useState<PendingItem | null>(null);
-  const [selectedTrit, setSelectedTrit] = useState<{ br: BonReception; trit: Trituration } | null>(null);
   const [selectedReservoir, setSelectedReservoir] = useState<string>('all');
   const [dateDebut, setDateDebut] = useState('');
   const [dateFin, setDateFin] = useState('');
@@ -318,12 +317,6 @@ const Stock = () => {
     } else {
       toast.error(t('Transfert impossible (quantité insuffisante ou capacité dépassée)', 'التحويل مستحيل'));
     }
-  };
-
-
-  const openAffectDialog = (br: BonReception, trit: Trituration) => {
-    setSelectedTrit({ br, trit });
-    setIsAffectDialogOpen(true);
   };
 
   const openReservoirDetail = (reservoir: Reservoir) => {
