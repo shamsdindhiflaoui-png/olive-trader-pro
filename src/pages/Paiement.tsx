@@ -16,18 +16,20 @@ import { StatCard } from '@/components/ui/stat-card';
 import { useAppStore } from '@/store/appStore';
 import { useLanguageStore } from '@/store/languageStore';
 import { useToast } from '@/hooks/use-toast';
-import { Receipt, FileText, CheckCircle2, Clock, CreditCard, Wallet, ArrowRightLeft } from 'lucide-react';
+import { Receipt, FileText, CheckCircle2, Clock, Wallet, Package } from 'lucide-react';
 import { PDFDownloadButton } from '@/components/pdf/PDFDownloadButton';
 import { PaymentReceiptPDF } from '@/components/pdf/PaymentReceiptPDF';
 import { PaymentMode, PaymentReceipt } from '@/types';
 
-interface BRToPay {
+// Unified type for items to pay (BR-based or Direct trituration)
+interface ItemToPay {
   id: string;
-  brNumber: string;
-  brDate: Date;
+  type: 'br' | 'direct';
+  reference: string; // BR number or LOT number
+  date: Date;
   clientId: string;
   clientName: string;
-  poidsNet: number;
+  poidsNet?: number; // Only for BR-based
   quantiteHuile: number;
   prixHuileKg?: number;
   isAffectedToStock: boolean;
@@ -51,12 +53,13 @@ export default function Paiement() {
   };
   const { toast } = useToast();
 
-  const [selectedBRs, setSelectedBRs] = useState<string[]>([]);
+  const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
   const [selectedReceipt, setSelectedReceipt] = useState<PaymentReceipt | null>(null);
   const [filterClient, setFilterClient] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('unpaid');
+  const [filterType, setFilterType] = useState<string>('all');
 
   const [formData, setFormData] = useState({
     modePayment: 'especes' as PaymentMode,
@@ -64,13 +67,18 @@ export default function Paiement() {
     observations: '',
   });
 
-  // Get all closed BRs with trituration (all are bawaz now)
-  const brsWithTrituration = useMemo(() => {
-    return bonsReception
+  // Build unified list of items to pay (BR-based + Direct triturations)
+  const itemsToPay = useMemo(() => {
+    const items: ItemToPay[] = [];
+    
+    // BR-based triturations
+    bonsReception
       .filter(br => br.status === 'closed')
-      .map(br => {
+      .forEach(br => {
         const trituration = triturations.find(t => t.brId === br.id);
         const client = clients.find(c => c.id === br.clientId);
+        
+        if (!trituration || !client) return;
         
         // Check if already paid
         const isPaid = paymentReceipts.some(pr => 
@@ -80,12 +88,11 @@ export default function Paiement() {
         // Check if affected to stock
         const isAffectedToStock = stockAffectations.some(sa => sa.brId === br.id);
         
-        if (!trituration || !client) return null;
-        
-        return {
+        items.push({
           id: br.id,
-          brNumber: br.number,
-          brDate: br.date,
+          type: 'br',
+          reference: br.number,
+          date: br.date,
           clientId: br.clientId,
           clientName: client.name,
           poidsNet: br.poidsNet,
@@ -93,42 +100,74 @@ export default function Paiement() {
           prixHuileKg: trituration.prixHuileKg,
           isAffectedToStock,
           isPaid,
-        } as BRToPay;
-      })
-      .filter(Boolean) as BRToPay[];
+        });
+      });
+    
+    // Direct triturations
+    triturations
+      .filter(t => t.type === 'direct' && t.clientId)
+      .forEach(trit => {
+        const client = clients.find(c => c.id === trit.clientId);
+        
+        if (!client) return;
+        
+        // Check if already paid
+        const isPaid = paymentReceipts.some(pr => 
+          pr.lines.some(line => line.triturationId === trit.id)
+        );
+        
+        // Check if affected to stock
+        const isAffectedToStock = stockAffectations.some(sa => sa.triturationId === trit.id);
+        
+        items.push({
+          id: trit.id,
+          type: 'direct',
+          reference: `LOT-${trit.numeroLot || trit.id.substring(0, 6)}`,
+          date: trit.date,
+          clientId: trit.clientId!,
+          clientName: client.name,
+          quantiteHuile: trit.quantiteHuile,
+          prixHuileKg: trit.prixHuileKg,
+          isAffectedToStock,
+          isPaid,
+        });
+      });
+    
+    return items;
   }, [bonsReception, triturations, clients, paymentReceipts, stockAffectations]);
 
-  // Filter BRs: only show BRs that are affected to stock (with price defined)
-  const filteredBRs = useMemo(() => {
-    return brsWithTrituration.filter(br => {
-      // Only show BRs that are affected to stock
-      if (!br.isAffectedToStock) return false;
+  // Filter items: only show items that are affected to stock (with price defined)
+  const filteredItems = useMemo(() => {
+    return itemsToPay.filter(item => {
+      // Only show items that are affected to stock
+      if (!item.isAffectedToStock) return false;
       
-      if (filterClient !== 'all' && br.clientId !== filterClient) return false;
-      if (filterStatus === 'unpaid' && br.isPaid) return false;
-      if (filterStatus === 'paid' && !br.isPaid) return false;
+      if (filterClient !== 'all' && item.clientId !== filterClient) return false;
+      if (filterStatus === 'unpaid' && item.isPaid) return false;
+      if (filterStatus === 'paid' && !item.isPaid) return false;
+      if (filterType !== 'all' && item.type !== filterType) return false;
       return true;
     });
-  }, [brsWithTrituration, filterClient, filterStatus]);
+  }, [itemsToPay, filterClient, filterStatus, filterType]);
 
   // Stats
   const stats = useMemo(() => {
-    const affectedBRs = brsWithTrituration.filter(br => br.isAffectedToStock);
+    const affectedItems = itemsToPay.filter(item => item.isAffectedToStock);
     
     return {
-      unpaid: affectedBRs.filter(br => !br.isPaid).length,
-      paid: affectedBRs.filter(br => br.isPaid).length,
+      unpaid: affectedItems.filter(item => !item.isPaid).length,
+      paid: affectedItems.filter(item => item.isPaid).length,
       totalDecaisse: paymentReceipts.reduce((sum, pr) => sum + pr.totalMontant, 0),
     };
-  }, [brsWithTrituration, paymentReceipts]);
+  }, [itemsToPay, paymentReceipts]);
 
-  // Get selected BRs info
-  const selectedBRsInfo = useMemo(() => {
-    const selected = filteredBRs.filter(br => selectedBRs.includes(br.id) && !br.isPaid);
+  // Get selected items info
+  const selectedItemsInfo = useMemo(() => {
+    const selected = filteredItems.filter(item => selectedItems.includes(item.id) && !item.isPaid);
     if (selected.length === 0) return null;
     
     const clientId = selected[0].clientId;
-    const allSameClient = selected.every(br => br.clientId === clientId);
+    const allSameClient = selected.every(item => item.clientId === clientId);
     const client = clients.find(c => c.id === clientId);
     
     return {
@@ -137,27 +176,27 @@ export default function Paiement() {
       clientId,
       clientName: client?.name || '',
     };
-  }, [selectedBRs, filteredBRs, clients]);
+  }, [selectedItems, filteredItems, clients]);
 
-  const handleSelectBR = (brId: string, checked: boolean) => {
+  const handleSelectItem = (itemId: string, checked: boolean) => {
     if (checked) {
-      setSelectedBRs(prev => [...prev, brId]);
+      setSelectedItems(prev => [...prev, itemId]);
     } else {
-      setSelectedBRs(prev => prev.filter(id => id !== brId));
+      setSelectedItems(prev => prev.filter(id => id !== itemId));
     }
   };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const unpaidIds = filteredBRs.filter(br => !br.isPaid).map(br => br.id);
-      setSelectedBRs(unpaidIds);
+      const unpaidIds = filteredItems.filter(item => !item.isPaid).map(item => item.id);
+      setSelectedItems(unpaidIds);
     } else {
-      setSelectedBRs([]);
+      setSelectedItems([]);
     }
   };
 
   const openCreateDialog = () => {
-    if (!selectedBRsInfo?.allSameClient) {
+    if (!selectedItemsInfo?.allSameClient) {
       toast({
         title: t("Erreur", "خطأ"),
         description: t("Impossible de mélanger des clients différents dans un même reçu.", "لا يمكن خلط حرفاء مختلفين في نفس الوصل."),
@@ -170,24 +209,29 @@ export default function Paiement() {
   };
 
   const handleCreateReceipt = () => {
-    if (!selectedBRsInfo) return;
+    if (!selectedItemsInfo) return;
     
-    // Check all selected BRs have predefined prices
-    const selectedItems = filteredBRs.filter(br => selectedBRs.includes(br.id) && !br.isPaid);
-    const missingPrice = selectedItems.some(br => !br.prixHuileKg || br.prixHuileKg <= 0);
+    // Check all selected items have predefined prices
+    const selected = filteredItems.filter(item => selectedItems.includes(item.id) && !item.isPaid);
+    const missingPrice = selected.some(item => !item.prixHuileKg || item.prixHuileKg <= 0);
     if (missingPrice) {
       toast({
         title: t("Erreur", "خطأ"),
-        description: t("Certains BR n'ont pas de prix défini. Veuillez affecter l'huile au stock d'abord.", "بعض الوصولات ليس لها سعر محدد. يرجى تخصيص الزيت للمخزون أولاً."),
+        description: t("Certains éléments n'ont pas de prix défini. Veuillez affecter l'huile au stock d'abord.", "بعض العناصر ليس لها سعر محدد. يرجى تخصيص الزيت للمخزون أولاً."),
         variant: "destructive",
       });
       return;
     }
     
+    // Build items array for the store
+    const items = selected.map(item => ({
+      type: item.type,
+      id: item.id,
+    }));
+    
     const receipt = addPaymentReceipt({
-      clientId: selectedBRsInfo.clientId,
-      brIds: selectedBRs,
-      prixUnitaire: 0, // Will be calculated per BR in store
+      clientId: selectedItemsInfo.clientId,
+      items,
       modePayment: formData.modePayment,
       date: new Date(formData.date),
       observations: formData.observations || undefined,
@@ -198,7 +242,7 @@ export default function Paiement() {
         title: t("Reçu créé", "تم إنشاء الوصل"),
         description: t(`Le reçu ${receipt.number} a été créé avec succès.`, `تم إنشاء الوصل ${receipt.number} بنجاح.`),
       });
-      setSelectedBRs([]);
+      setSelectedItems([]);
       setIsCreateDialogOpen(false);
       setFormData({
         modePayment: 'especes',
@@ -221,50 +265,59 @@ export default function Paiement() {
 
   // Calculate preview amounts
   const previewAmounts = useMemo(() => {
-    if (!selectedBRsInfo) return null;
+    if (!selectedItemsInfo) return null;
     
-    const selectedItems = filteredBRs.filter(br => selectedBRs.includes(br.id) && !br.isPaid);
+    const selected = filteredItems.filter(item => selectedItems.includes(item.id) && !item.isPaid);
     
-    const lines = selectedItems.map(br => {
-      const priceUsed = br.prixHuileKg || 0;
-      const amount = br.quantiteHuile * priceUsed;
+    const lines = selected.map(item => {
+      const priceUsed = item.prixHuileKg || 0;
+      const amount = item.quantiteHuile * priceUsed;
       
-      return { brNumber: br.brNumber, amount, priceUsed, quantite: br.quantiteHuile };
+      return { reference: item.reference, amount, priceUsed, quantite: item.quantiteHuile, type: item.type };
     });
     
     const total = lines.reduce((sum, line) => sum + line.amount, 0);
-    const isValid = selectedItems.every(br => br.prixHuileKg && br.prixHuileKg > 0);
+    const isValid = selected.every(item => item.prixHuileKg && item.prixHuileKg > 0);
     
     return { lines, total, isValid };
-  }, [selectedBRs, selectedBRsInfo, filteredBRs]);
+  }, [selectedItems, selectedItemsInfo, filteredItems]);
 
-  // BR columns
-  const brColumns = [
+  // Item columns
+  const itemColumns = [
     {
       key: 'select',
       header: () => (
         <Checkbox
-          checked={selectedBRs.length === filteredBRs.filter(br => !br.isPaid).length && filteredBRs.some(br => !br.isPaid)}
+          checked={selectedItems.length === filteredItems.filter(item => !item.isPaid).length && filteredItems.some(item => !item.isPaid)}
           onCheckedChange={handleSelectAll}
         />
       ),
-      render: (br: BRToPay) => (
+      render: (item: ItemToPay) => (
         <Checkbox
-          checked={selectedBRs.includes(br.id)}
-          onCheckedChange={(checked) => handleSelectBR(br.id, checked as boolean)}
-          disabled={br.isPaid}
+          checked={selectedItems.includes(item.id)}
+          onCheckedChange={(checked) => handleSelectItem(item.id, checked as boolean)}
+          disabled={item.isPaid}
         />
       ),
     },
     {
-      key: 'brNumber',
-      header: t('N° BR', 'رقم الوصل'),
-      render: (br: BRToPay) => <span className="font-mono font-medium">{br.brNumber}</span>,
+      key: 'type',
+      header: t('Type', 'النوع'),
+      render: (item: ItemToPay) => (
+        <Badge variant={item.type === 'br' ? 'default' : 'secondary'}>
+          {item.type === 'br' ? 'BR' : t('Direct', 'مباشر')}
+        </Badge>
+      ),
     },
     {
-      key: 'brDate',
-      header: t('Date BR', 'التاريخ'),
-      render: (br: BRToPay) => format(new Date(br.brDate), 'dd/MM/yyyy', { locale: dateLocale }),
+      key: 'reference',
+      header: t('Référence', 'المرجع'),
+      render: (item: ItemToPay) => <span className="font-mono font-medium">{item.reference}</span>,
+    },
+    {
+      key: 'date',
+      header: t('Date', 'التاريخ'),
+      render: (item: ItemToPay) => format(new Date(item.date), 'dd/MM/yyyy', { locale: dateLocale }),
     },
     {
       key: 'clientName',
@@ -273,21 +326,21 @@ export default function Paiement() {
     {
       key: 'poidsNet',
       header: t('Poids Net (kg)', 'الوزن الصافي (كغ)'),
-      render: (br: BRToPay) => br.poidsNet.toLocaleString(),
+      render: (item: ItemToPay) => item.poidsNet ? item.poidsNet.toLocaleString() : '-',
     },
     {
       key: 'quantiteHuile',
-      header: t('Huile (L)', 'الزيت (ل)'),
-      render: (br: BRToPay) => br.quantiteHuile.toLocaleString('fr-FR', { minimumFractionDigits: 3 }),
+      header: t('Huile (kg)', 'الزيت (كغ)'),
+      render: (item: ItemToPay) => item.quantiteHuile.toLocaleString('fr-FR', { minimumFractionDigits: 3 }),
     },
     {
       key: 'prixHuileKg',
       header: t('Prix/Kg', 'السعر/كغ'),
-      render: (br: BRToPay) => {
-        if (br.prixHuileKg) {
+      render: (item: ItemToPay) => {
+        if (item.prixHuileKg) {
           return (
             <span className="font-medium text-primary">
-              {br.prixHuileKg.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT
+              {item.prixHuileKg.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT
             </span>
           );
         }
@@ -297,7 +350,7 @@ export default function Paiement() {
     {
       key: 'isPaid',
       header: t('Statut', 'الحالة'),
-      render: (br: BRToPay) => br.isPaid ? (
+      render: (item: ItemToPay) => item.isPaid ? (
         <Badge variant="default" className="bg-green-600">
           <CheckCircle2 className="h-3 w-3 mr-1" />
           {t('Payé', 'مدفوع')}
@@ -332,8 +385,8 @@ export default function Paiement() {
       },
     },
     {
-      key: 'brCount',
-      header: t('Nb BR', 'عدد الوصولات'),
+      key: 'lineCount',
+      header: t('Nb Éléments', 'عدد العناصر'),
       render: (r: PaymentReceipt) => r.lines.length,
     },
     {
@@ -374,9 +427,9 @@ export default function Paiement() {
   ];
 
   const uniqueClients = useMemo(() => {
-    const clientIds = [...new Set(brsWithTrituration.map(br => br.clientId))];
+    const clientIds = [...new Set(itemsToPay.map(item => item.clientId))];
     return clientIds.map(id => clients.find(c => c.id === id)).filter(Boolean);
-  }, [brsWithTrituration, clients]);
+  }, [itemsToPay, clients]);
 
   return (
     <MainLayout>
@@ -406,6 +459,20 @@ export default function Paiement() {
 
       {/* Filters and Actions */}
       <div className="flex flex-wrap items-center gap-4 mb-4">
+        <div className="flex items-center gap-2">
+          <Label>{t('Type', 'النوع')}:</Label>
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">{t("Tous", "الكل")}</SelectItem>
+              <SelectItem value="br">{t("BR", "وصل")}</SelectItem>
+              <SelectItem value="direct">{t("Direct", "مباشر")}</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
         <div className="flex items-center gap-2">
           <Label>{t('Client', 'الحريف')}:</Label>
           <Select value={filterClient} onValueChange={setFilterClient}>
@@ -437,15 +504,15 @@ export default function Paiement() {
 
         <div className="flex-1" />
 
-        {selectedBRs.length > 0 && selectedBRsInfo && (
+        {selectedItems.length > 0 && selectedItemsInfo && (
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">
-              {selectedBRs.length} {t('BR sélectionné(s)', 'وصل محدد')}
-              {!selectedBRsInfo.allSameClient && (
+              {selectedItems.length} {t('élément(s) sélectionné(s)', 'عنصر محدد')}
+              {!selectedItemsInfo.allSameClient && (
                 <span className="text-destructive ml-2">({t('clients différents!', 'حرفاء مختلفين!')})</span>
               )}
             </span>
-            <Button onClick={openCreateDialog} disabled={!selectedBRsInfo.allSameClient}>
+            <Button onClick={openCreateDialog} disabled={!selectedItemsInfo.allSameClient}>
               <Receipt className="h-4 w-4 mr-2" />
               {t('Créer un reçu de règlement', 'إنشاء وصل تسديد')}
             </Button>
@@ -453,13 +520,16 @@ export default function Paiement() {
         )}
       </div>
 
-      {/* BR List */}
+      {/* Items List */}
       <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">{t('Liste des BR à payer', 'قائمة الوصولات للدفع')}</h3>
+        <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+          <Package className="h-5 w-5" />
+          {t('Liste des éléments à payer', 'قائمة العناصر للدفع')}
+        </h3>
         <DataTable
-          columns={brColumns}
-          data={filteredBRs}
-          emptyMessage={t("Aucun BR disponible pour paiement", "لا توجد وصولات متاحة للدفع")}
+          columns={itemColumns}
+          data={filteredItems}
+          emptyMessage={t("Aucun élément disponible pour paiement", "لا توجد عناصر متاحة للدفع")}
         />
       </div>
 
@@ -481,131 +551,99 @@ export default function Paiement() {
             <DialogTitle>{t('Créer un reçu de règlement', 'إنشاء وصل تسديد')}</DialogTitle>
           </DialogHeader>
           
-          {selectedBRsInfo && (
+          {selectedItemsInfo && (
             <div className="space-y-4">
               <div className="p-3 bg-secondary/20 rounded-lg">
-                <p className="font-medium">{selectedBRsInfo.clientName}</p>
+                <p className="font-medium">{selectedItemsInfo.clientName}</p>
                 <p className="text-sm text-muted-foreground">
-                  {selectedBRs.length} {t('BR sélectionné(s)', 'وصل محدد')}
+                  {selectedItemsInfo.count} {t('élément(s) sélectionné(s)', 'عنصر محدد')}
                 </p>
-                <Badge className="bg-primary mt-2">
-                  💸 {t('Flux Sortant (Décaissement)', 'تدفق صادر (صرف)')}
-                </Badge>
               </div>
 
-              {/* Show details with predefined prices */}
+              {/* Preview amounts */}
+              {previewAmounts && (
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted">
+                      <tr>
+                        <th className="text-left p-2">{t('Réf.', 'المرجع')}</th>
+                        <th className="text-center p-2">{t('Type', 'النوع')}</th>
+                        <th className="text-right p-2">{t('Qté (kg)', 'الكمية')}</th>
+                        <th className="text-right p-2">{t('P.U.', 'السعر')}</th>
+                        <th className="text-right p-2">{t('Montant', 'المبلغ')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewAmounts.lines.map((line, idx) => (
+                        <tr key={idx} className="border-t">
+                          <td className="p-2 font-mono">{line.reference}</td>
+                          <td className="p-2 text-center">
+                            <Badge variant={line.type === 'br' ? 'default' : 'secondary'} className="text-xs">
+                              {line.type === 'br' ? 'BR' : t('Direct', 'مباشر')}
+                            </Badge>
+                          </td>
+                          <td className="p-2 text-right">{line.quantite.toFixed(3)}</td>
+                          <td className="p-2 text-right">{line.priceUsed.toFixed(3)}</td>
+                          <td className="p-2 text-right font-medium">{line.amount.toFixed(3)} DT</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="bg-muted font-semibold">
+                      <tr>
+                        <td colSpan={4} className="p-2 text-right">{t('Total à payer', 'المبلغ للدفع')}</td>
+                        <td className="p-2 text-right">{previewAmounts.total.toFixed(3)} DT</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              )}
+
               <div className="space-y-3">
-                <div className="p-3 rounded-lg border-2 border-primary/20 bg-primary/5">
-                  <h4 className="font-medium text-primary mb-2">
-                    💸 {t('Détails des BR', 'تفاصيل الوصولات')}
-                  </h4>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    {t('Les prix ont été définis lors de l\'affectation au stock', 'تم تحديد الأسعار عند تخصيص المخزون')}
-                  </p>
-                  
-                  <div className="space-y-2 max-h-40 overflow-y-auto">
-                    {filteredBRs.filter(br => selectedBRs.includes(br.id) && !br.isPaid).map(br => (
-                      <div key={br.id} className="flex justify-between items-center text-sm bg-background p-2 rounded">
-                        <div>
-                          <span className="font-mono font-medium">{br.brNumber}</span>
-                          <span className="text-muted-foreground ml-2">
-                            {br.quantiteHuile.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} L
-                          </span>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-primary font-medium">
-                            {br.prixHuileKg?.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT/kg
-                          </span>
-                          <span className="text-muted-foreground ml-2">
-                            = {((br.prixHuileKg || 0) * br.quantiteHuile).toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                <div>
+                  <Label>{t('Mode de paiement', 'طريقة الدفع')}</Label>
+                  <Select
+                    value={formData.modePayment}
+                    onValueChange={(v) => setFormData(prev => ({ ...prev, modePayment: v as PaymentMode }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="especes">{t('Espèces', 'نقداً')}</SelectItem>
+                      <SelectItem value="virement">{t('Virement', 'تحويل')}</SelectItem>
+                      <SelectItem value="compensation">{t('Compensation', 'مقاصة')}</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div>
-                  <Label>{t('Date de règlement', 'تاريخ التسديد')}</Label>
+                  <Label>{t('Date du règlement', 'تاريخ الدفع')}</Label>
                   <Input
                     type="date"
                     value={formData.date}
                     onChange={(e) => setFormData(prev => ({ ...prev, date: e.target.value }))}
                   />
                 </div>
-              </div>
-
-              <div>
-                <Label>{t('Mode de règlement', 'طريقة الدفع')}</Label>
-                <Select value={formData.modePayment} onValueChange={(v) => setFormData(prev => ({ ...prev, modePayment: v as PaymentMode }))}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="especes">
-                      <div className="flex items-center gap-2">
-                        <Wallet className="h-4 w-4" />
-                        {t('Espèces', 'نقداً')}
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="virement">
-                      <div className="flex items-center gap-2">
-                        <CreditCard className="h-4 w-4" />
-                        {t('Virement', 'تحويل')}
-                      </div>
-                    </SelectItem>
-                    <SelectItem value="compensation">
-                      <div className="flex items-center gap-2">
-                        <ArrowRightLeft className="h-4 w-4" />
-                        {t('Compensation', 'مقاصة')}
-                      </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label>{t('Observations', 'ملاحظات')}</Label>
-                <Textarea
-                  value={formData.observations}
-                  onChange={(e) => setFormData(prev => ({ ...prev, observations: e.target.value }))}
-                  placeholder={t("Observations optionnelles...", "ملاحظات اختيارية...")}
-                />
-              </div>
-
-              {/* Preview */}
-              {previewAmounts && previewAmounts.isValid && (
-                <div className="border rounded-lg p-4 space-y-2">
-                  <h4 className="font-medium text-sm">{t('Aperçu du calcul', 'معاينة الحساب')}</h4>
-                  {previewAmounts.lines.map((line, idx) => (
-                    <div key={idx} className="flex justify-between text-sm">
-                      <span>{line.brNumber}</span>
-                      <span className="text-muted-foreground">
-                        {line.quantite.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} × {line.priceUsed.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} = 
-                      </span>
-                      <span className="font-medium">{line.amount.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT</span>
-                    </div>
-                  ))}
-                  <div className="border-t pt-2 flex justify-between font-semibold text-lg">
-                    <span>{t('Total', 'المجموع')}</span>
-                    <span className="text-primary">
-                      {previewAmounts.total.toLocaleString('fr-FR', { minimumFractionDigits: 3 })} DT
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-2 p-2 bg-muted rounded">
-                    💸 {t("Ce montant sera payé par l'huilerie au client", 'سيدفع هذا المبلغ من المعصرة للحريف')}
-                  </p>
+                
+                <div>
+                  <Label>{t('Observations', 'ملاحظات')}</Label>
+                  <Textarea
+                    value={formData.observations}
+                    onChange={(e) => setFormData(prev => ({ ...prev, observations: e.target.value }))}
+                    rows={2}
+                  />
                 </div>
-              )}
+              </div>
             </div>
           )}
-
+          
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
               {t('Annuler', 'إلغاء')}
             </Button>
-            <Button onClick={handleCreateReceipt}>
-              {t('Valider le règlement', 'تأكيد التسديد')}
+            <Button onClick={handleCreateReceipt} disabled={!previewAmounts?.isValid}>
+              <Receipt className="h-4 w-4 mr-2" />
+              {t('Créer le reçu', 'إنشاء الوصل')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -613,31 +651,31 @@ export default function Paiement() {
 
       {/* Receipt Detail Dialog */}
       <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl">
           <DialogHeader>
-            <DialogTitle>{t('Détails du reçu', 'تفاصيل الوصل')}</DialogTitle>
+            <DialogTitle>
+              {t('Détails du reçu', 'تفاصيل الوصل')} {selectedReceipt?.number}
+            </DialogTitle>
           </DialogHeader>
           
           {selectedReceipt && (
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted rounded-lg">
                 <div>
-                  <p className="text-muted-foreground">{t('N° Reçu', 'رقم الوصل')}</p>
-                  <p className="font-mono font-medium">{selectedReceipt.number}</p>
+                  <p className="text-sm text-muted-foreground">{t('Client', 'الحريف')}</p>
+                  <p className="font-medium">{clients.find(c => c.id === selectedReceipt.clientId)?.name}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">{t('Date', 'التاريخ')}</p>
-                  <p>{format(new Date(selectedReceipt.date), 'dd/MM/yyyy', { locale: dateLocale })}</p>
+                  <p className="text-sm text-muted-foreground">{t('Date', 'التاريخ')}</p>
+                  <p className="font-medium">{format(new Date(selectedReceipt.date), 'dd/MM/yyyy', { locale: dateLocale })}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">{t('Client', 'الحريف')}</p>
-                  <p className="font-medium">
-                    {clients.find(c => c.id === selectedReceipt.clientId)?.name}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{t('Mode de paiement', 'طريقة الدفع')}</p>
+                  <p className="font-medium">{paymentModeLabels[selectedReceipt.modePayment]}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground">{t('Mode de paiement', 'طريقة الدفع')}</p>
-                  <Badge variant="outline">{paymentModeLabels[selectedReceipt.modePayment]}</Badge>
+                  <p className="text-sm text-muted-foreground">{t('Total', 'المجموع')}</p>
+                  <p className="font-medium text-primary">{selectedReceipt.totalMontant.toFixed(3)} DT</p>
                 </div>
               </div>
 
@@ -645,8 +683,8 @@ export default function Paiement() {
                 <table className="w-full text-sm">
                   <thead className="bg-muted">
                     <tr>
-                      <th className="text-left p-2">{t('BR', 'الوصل')}</th>
-                      <th className="text-right p-2">{t('Huile (L)', 'الزيت (ل)')}</th>
+                      <th className="text-left p-2">{t('Référence', 'المرجع')}</th>
+                      <th className="text-right p-2">{t('Qté Huile', 'كمية الزيت')}</th>
                       <th className="text-right p-2">{t('P.U.', 'السعر')}</th>
                       <th className="text-right p-2">{t('Montant', 'المبلغ')}</th>
                     </tr>
@@ -654,8 +692,8 @@ export default function Paiement() {
                   <tbody>
                     {selectedReceipt.lines.map((line, idx) => (
                       <tr key={idx} className="border-t">
-                        <td className="p-2 font-mono">{line.brNumber}</td>
-                        <td className="p-2 text-right">{line.quantiteHuile?.toFixed(3) || '-'} L</td>
+                        <td className="p-2 font-mono">{line.reference}</td>
+                        <td className="p-2 text-right">{line.quantiteHuile?.toFixed(3) || '-'} kg</td>
                         <td className="p-2 text-right">{line.prixUnitaire.toFixed(3)}</td>
                         <td className="p-2 text-right font-medium">{line.montant.toFixed(3)} DT</td>
                       </tr>
@@ -671,15 +709,22 @@ export default function Paiement() {
               </div>
 
               {selectedReceipt.observations && (
-                <div>
-                  <p className="text-muted-foreground text-sm">{t('Observations', 'ملاحظات')}</p>
-                  <p className="text-sm">{selectedReceipt.observations}</p>
+                <div className="p-3 bg-secondary/20 rounded-lg">
+                  <p className="text-sm text-muted-foreground">{t('Observations', 'ملاحظات')}</p>
+                  <p>{selectedReceipt.observations}</p>
                 </div>
               )}
             </div>
           )}
-
+          
           <DialogFooter>
+            {selectedReceipt && getClientForReceipt(selectedReceipt) && (
+              <PDFDownloadButton
+                document={<PaymentReceiptPDF receipt={selectedReceipt} client={getClientForReceipt(selectedReceipt)!} settings={settings} />}
+                fileName={`Recu_${selectedReceipt.number}.pdf`}
+                label={t('Télécharger PDF', 'تحميل PDF')}
+              />
+            )}
             <Button variant="outline" onClick={() => setIsDetailDialogOpen(false)}>
               {t('Fermer', 'إغلاق')}
             </Button>

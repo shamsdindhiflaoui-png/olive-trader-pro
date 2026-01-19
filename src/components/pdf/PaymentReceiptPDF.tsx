@@ -343,10 +343,10 @@ export const PaymentReceiptPDF = ({ receipt, client, settings }: PaymentReceiptP
           <Text style={styles.colTotal}>Montant (DT)</Text>
         </View>
         {receipt.lines.map((line, index) => (
-          <View key={line.brId} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
-            <Text style={styles.colBR}>{line.brNumber}</Text>
+          <View key={line.brId || line.triturationId || index} style={index % 2 === 0 ? styles.tableRow : styles.tableRowAlt}>
+            <Text style={styles.colBR}>{line.reference}</Text>
             <Text style={styles.colDate}>
-              {format(new Date(line.brDate), 'dd/MM/yyyy', { locale: fr })}
+              {format(new Date(line.date), 'dd/MM/yyyy', { locale: fr })}
             </Text>
             <Text style={styles.colQty}>
               {line.quantiteHuile.toLocaleString()}
