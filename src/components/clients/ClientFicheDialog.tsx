@@ -64,7 +64,7 @@ interface TableRow {
   id: string;
   date: Date;
   libelle: string;
-  type: ClientOperationType | 'br';
+  type: ClientOperationType | 'br' | 'direct';
   capitalDT?: number;
   avanceDT?: number;
   brKg?: number;
@@ -73,6 +73,7 @@ interface TableRow {
   reference?: string;
   receiptNumber?: string;
   originalOperation?: ClientOperation;
+  lotNumber?: string;
 }
 
 export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDialogProps) {
@@ -110,9 +111,20 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
     return triturations.find(t => t.brId === brId);
   };
 
+  // Get direct triturations for this client
+  const clientDirectTriturations = useMemo(() =>
+    triturations.filter(t => t.type === 'direct' && t.clientId === client.id),
+    [triturations, client.id]
+  );
+
   // Get payment receipt for BR
   const getPaymentReceiptForBR = (brId: string) => {
     return paymentReceipts.find(pr => pr.lines.some(line => line.brId === brId));
+  };
+
+  // Get payment receipt for direct trituration
+  const getPaymentReceiptForDirectTrit = (tritId: string) => {
+    return paymentReceipts.find(pr => pr.lines.some(line => line.triturationId === tritId));
   };
 
   // Get all payment receipts for this client
@@ -167,9 +179,30 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
       });
     });
 
+    // Add Direct Triturations
+    clientDirectTriturations.forEach(trit => {
+      const paymentReceipt = getPaymentReceiptForDirectTrit(trit.id);
+      const isPaid = !!paymentReceipt;
+      const lotRef = `LOT-${trit.numeroLot || trit.id.substring(0, 6)}`;
+      
+      rows.push({
+        id: `direct-${trit.id}`,
+        date: new Date(trit.date),
+        libelle: `Achat direct huile - ${lotRef}`,
+        type: 'direct',
+        capitalDT: undefined,
+        avanceDT: undefined,
+        brKg: undefined,
+        huileL: trit.quantiteHuile,
+        isPaid: isPaid,
+        reference: lotRef,
+        lotNumber: trit.numeroLot,
+      });
+    });
+
     // Sort by date
     return rows.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [clientOps, clientBRs]);
+  }, [clientOps, clientBRs, clientDirectTriturations]);
 
   // Calculate totals
   const totals = useMemo(() => {
@@ -372,12 +405,17 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className={row.type === 'br' ? 'text-primary' : ''}>
+                          <span className={row.type === 'br' ? 'text-primary' : row.type === 'direct' ? 'text-orange-600' : ''}>
                             {row.libelle}
                           </span>
                           {row.receiptNumber && (
                             <span className="text-xs text-muted-foreground">
                               {row.receiptNumber}
+                            </span>
+                          )}
+                          {row.type === 'direct' && (
+                            <span className="text-xs text-orange-500">
+                              Trituration Directe
                             </span>
                           )}
                         </div>
@@ -392,10 +430,10 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
                         {row.brKg !== undefined ? `${row.brKg.toLocaleString()}` : '-'}
                       </TableCell>
                       <TableCell className="text-right font-medium">
-                        {row.huileL !== undefined && row.type === 'br' ? `${row.huileL.toFixed(1)}` : '-'}
+                        {row.huileL !== undefined && (row.type === 'br' || row.type === 'direct') ? `${row.huileL.toFixed(1)}` : '-'}
                       </TableCell>
                       <TableCell className="text-center">
-                        {row.type === 'br' ? (
+                        {(row.type === 'br' || row.type === 'direct') ? (
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             row.isPaid 
                               ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' 
@@ -425,8 +463,8 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
                               icon={<Download className="h-4 w-4" />}
                             />
                           )}
-                          {/* Delete button */}
-                          {!row.id.startsWith('br-') && (
+                          {/* Delete button - only for operations, not BR or direct */}
+                          {!row.id.startsWith('br-') && !row.id.startsWith('direct-') && (
                             <Button
                               variant="ghost"
                               size="sm"
