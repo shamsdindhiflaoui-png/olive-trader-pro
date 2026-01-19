@@ -62,7 +62,7 @@ interface AppState {
   addInvoicePayment: (payment: { invoiceId: string; montant: number; modePayment: string; date: Date; reference?: string; observations?: string }) => boolean;
   
   // Payment Receipt actions
-  addPaymentReceipt: (data: { clientId: string; brIds: string[]; prixUnitaire: number; modePayment: PaymentMode; date: Date; observations?: string }) => PaymentReceipt | null;
+  addPaymentReceipt: (data: { clientId: string; items: Array<{ type: 'br' | 'direct'; id: string }>; modePayment: PaymentMode; date: Date; observations?: string }) => PaymentReceipt | null;
   
   // Settings actions
   updateSettings: (settings: Partial<Settings>) => void;
@@ -631,51 +631,63 @@ export const useAppStore = create<AppState>()(
         const client = state.clients.find(c => c.id === data.clientId);
         if (!client) return null;
         
-        // Verify all BRs belong to the same client, same nature, and are closed/unpaid
-        const brList: PaymentReceiptLine[] = [];
-        let brNature: 'service' | 'bawaz' | null = null;
+        const lines: PaymentReceiptLine[] = [];
         
-        for (const brId of data.brIds) {
-          const br = state.bonsReception.find(b => b.id === brId);
-          if (!br || br.status !== 'closed' || br.clientId !== data.clientId) return null;
-          
-          // Check nature consistency
-          if (brNature === null) {
-            brNature = br.nature;
-          } else if (br.nature !== brNature) {
-            return null; // Cannot mix different natures
+        for (const item of data.items) {
+          if (item.type === 'br') {
+            const br = state.bonsReception.find(b => b.id === item.id);
+            if (!br || br.status !== 'closed' || br.clientId !== data.clientId) continue;
+            
+            // Check if already paid
+            const existingReceipt = state.paymentReceipts.find(pr => 
+              pr.lines.some(line => line.brId === item.id)
+            );
+            if (existingReceipt) continue;
+            
+            const trituration = state.triturations.find(t => t.brId === item.id);
+            if (!trituration || !trituration.prixHuileKg) continue;
+            
+            const montant = trituration.quantiteHuile * trituration.prixHuileKg;
+            
+            lines.push({
+              sourceType: 'br',
+              brId: item.id,
+              reference: br.number,
+              date: br.date,
+              poidsNet: br.poidsNet,
+              quantiteHuile: trituration.quantiteHuile,
+              prixUnitaire: trituration.prixHuileKg,
+              montant,
+            });
+          } else if (item.type === 'direct') {
+            const trituration = state.triturations.find(t => t.id === item.id && t.type === 'direct');
+            if (!trituration || trituration.clientId !== data.clientId) continue;
+            
+            // Check if already paid
+            const existingReceipt = state.paymentReceipts.find(pr => 
+              pr.lines.some(line => line.triturationId === item.id)
+            );
+            if (existingReceipt) continue;
+            
+            if (!trituration.prixHuileKg) continue;
+            
+            const montant = trituration.quantiteHuile * trituration.prixHuileKg;
+            
+            lines.push({
+              sourceType: 'direct',
+              triturationId: item.id,
+              reference: `LOT-${trituration.numeroLot || item.id.substring(0, 6)}`,
+              date: trituration.date,
+              quantiteHuile: trituration.quantiteHuile,
+              prixUnitaire: trituration.prixHuileKg,
+              montant,
+            });
           }
-          
-          // Check if already paid
-          const existingReceipt = state.paymentReceipts.find(pr => 
-            pr.lines.some(line => line.brId === brId)
-          );
-          if (existingReceipt) return null;
-          
-          const trituration = state.triturations.find(t => t.brId === brId);
-          if (!trituration) return null;
-          
-          let montant: number;
-          let prixUtilise: number;
-          
-          // Bawaz: use predefined price from trituration - mill pays client
-          prixUtilise = trituration.prixHuileKg || data.prixUnitaire;
-          montant = trituration.quantiteHuile * prixUtilise;
-          
-          brList.push({
-            brId,
-            brNumber: br.number,
-            brDate: br.date,
-            poidsNet: br.poidsNet,
-            quantiteHuile: trituration.quantiteHuile,
-            prixUnitaire: prixUtilise,
-            montant,
-          });
         }
         
-        if (brList.length === 0 || !brNature) return null;
+        if (lines.length === 0) return null;
         
-        const totalMontant = brList.reduce((sum, line) => sum + line.montant, 0);
+        const totalMontant = lines.reduce((sum, line) => sum + line.montant, 0);
         
         // Cash flow is always 'sortant' now (mill pays client)
         const cashFlowType = 'sortant';
@@ -692,7 +704,7 @@ export const useAppStore = create<AppState>()(
           clientId: data.clientId,
           nature: 'bawaz',
           cashFlowType,
-          lines: brList,
+          lines,
           totalMontant,
           modePayment: data.modePayment,
           observations: data.observations,

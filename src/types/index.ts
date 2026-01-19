@@ -226,11 +226,15 @@ export type PaymentMode = 'especes' | 'virement' | 'compensation';
 
 export type PaymentReceiptStatus = 'paid';
 
+export type PaymentSourceType = 'br' | 'direct';
+
 export interface PaymentReceiptLine {
-  brId: string;
-  brNumber: string;
-  brDate: Date;
-  poidsNet: number;
+  sourceType: PaymentSourceType;
+  brId?: string;
+  triturationId?: string;
+  reference: string; // BR number or LOT number
+  date: Date;
+  poidsNet?: number; // Only for BR-based
   quantiteHuile: number;
   prixUnitaire: number;
   montant: number;
