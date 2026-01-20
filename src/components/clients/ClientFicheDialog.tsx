@@ -617,6 +617,17 @@ export function ClientFicheDialog({ client, open, onOpenChange }: ClientFicheDia
                   avanceDT={totals.avanceDT}
                   totalPayments={totals.totalPayments}
                   companyName={settings.companyName}
+                  operations={tableRows.map(row => ({
+                    id: row.id,
+                    date: row.date,
+                    libelle: row.libelle,
+                    type: row.type,
+                    capitalDT: row.capitalDT,
+                    avanceDT: row.avanceDT,
+                    huileL: row.huileL,
+                    isPaid: row.isPaid,
+                    reference: row.reference,
+                  }))}
                 />
               }
               fileName={`extrait-${client.code}-${format(new Date(), 'yyyyMMdd')}.pdf`}
