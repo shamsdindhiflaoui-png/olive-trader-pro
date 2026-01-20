@@ -34,7 +34,7 @@ import { AllClientsGrosExtraitPDF } from '@/components/pdf/AllClientsGrosExtrait
 
 const Clients = () => {
   const { 
-    clients, clientsGros, clientOperations, bonsReception, bonsLivraison, paymentReceipts, settings, 
+    clients, clientsGros, clientOperations, bonsReception, bonsLivraison, paymentReceipts, triturations, settings, 
     addClient, updateClient, deleteClient,
     addClientGros, updateClientGros, deleteClientGros 
   } = useAppStore();
@@ -199,11 +199,60 @@ const Clients = () => {
 
   const allClientsData = clients.map(client => {
     const totals = getClientTotals(client.id);
+    const clientOps = clientOperations.filter(op => op.clientId === client.id);
+    const clientBRs = bonsReception.filter(br => br.clientId === client.id);
+    const clientDirectTrits = triturations.filter(t => t.type === 'direct' && t.clientId === client.id);
+    
+    // Build operations array
+    const operations = [
+      // Capital and Avance operations
+      ...clientOps.map(op => ({
+        id: op.id,
+        date: new Date(op.date),
+        libelle: op.libelle,
+        type: op.type as 'capital_fdr' | 'avance',
+        capitalDT: op.type === 'capital_fdr' ? op.montantDT : undefined,
+        avanceDT: op.type === 'avance' ? op.montantDT : undefined,
+        reference: op.reference,
+      })),
+      // BR operations
+      ...clientBRs.map(br => {
+        const trituration = triturations.find(t => t.brId === br.id);
+        const paymentReceipt = paymentReceipts.find(pr => pr.lines.some(line => line.brId === br.id));
+        return {
+          id: `br-${br.id}`,
+          date: new Date(br.date),
+          libelle: `Réception olives - ${br.number}`,
+          type: 'br' as const,
+          huileL: trituration?.quantiteHuile || 0,
+          isPaid: !!paymentReceipt,
+          reference: br.number,
+        };
+      }),
+      // Direct trituration operations
+      ...clientDirectTrits.map(trit => {
+        const paymentReceipt = paymentReceipts.find(pr => pr.lines.some(line => line.triturationId === trit.id));
+        const lotRef = `LOT-${trit.numeroLot || trit.id.substring(0, 6)}`;
+        return {
+          id: `direct-${trit.id}`,
+          date: new Date(trit.date),
+          libelle: `Achat direct huile - ${lotRef}`,
+          type: 'direct' as const,
+          huileL: trit.quantiteHuile,
+          isPaid: !!paymentReceipt,
+          reference: lotRef,
+        };
+      }),
+    ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
     return {
+      id: client.id,
+      code: client.code,
       name: client.name,
       capitalDT: totals.capitalDT,
       avanceDT: totals.avanceDT,
       totalPayments: totals.totalPayments,
+      operations,
     };
   });
 
